@@ -1,0 +1,90 @@
+{
+  "expo": {
+    "name": "OpenRide",
+    "slug": "openride",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#2E7D32"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "org.openride.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "OpenRide needs your location to show your position on the map and connect you with nearby drivers.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "OpenRide needs background location access to track your position during active rides.",
+        "NSLocationAlwaysUsageDescription": "OpenRide needs background location access to track your position during active rides.",
+        "NSCameraUsageDescription": "OpenRide needs camera access to update your profile photo.",
+        "UIBackgroundModes": [
+          "location",
+          "remote-notification"
+        ]
+      },
+      "config": {
+        "googleMapsApiKey": "YOUR_GOOGLE_MAPS_API_KEY"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#2E7D32"
+      },
+      "package": "org.openride.app",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "CAMERA",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "YOUR_GOOGLE_MAPS_API_KEY"
+        }
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "OpenRide needs background location access to track your position during active rides.",
+          "locationAlwaysPermission": "OpenRide needs background location access to track your position during active rides.",
+          "locationWhenInUsePermission": "OpenRide needs your location to show your position on the map and connect you with nearby drivers.",
+          "isAndroidBackgroundLocationEnabled": true
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#2E7D32"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "OpenRide needs camera access to update your profile photo."
+        }
+      ],
+      [
+        "expo-secure-store"
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "your-project-id"
+      }
+    }
+  }
+}

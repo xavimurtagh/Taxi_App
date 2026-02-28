@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  api:
+    build: ./backend
+    ports:
+      - '3000:3000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    env_file:
+      - .env
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    restart: unless-stopped
+    networks:
+      - openride
+
+  postgres:
+    image: postgis/postgis:16-3.4
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_DB: openride
+      POSTGRES_USER: openride
+      POSTGRES_PASSWORD: openride
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U openride -d openride']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - openride
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+    restart: unless-stopped
+    networks:
+      - openride
+
+  # osrm:
+  #   image: osrm/osrm-backend
+  #   ports:
+  #     - '5001:5000'
+  #   command: osrm-routed --algorithm mld /data/region.osrm
+  #   volumes:
+  #     - ./osrm-data:/data
+  #   restart: unless-stopped
+  #   networks:
+  #     - openride
+
+volumes:
+  pgdata:
+
+networks:
+  openride:
+    driver: bridge
