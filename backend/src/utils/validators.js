@@ -187,6 +187,88 @@ export const driverProfileSchema = Joi.object({
 });
 
 /**
+ * Schema for creating a dispute.
+ */
+export const createDisputeSchema = Joi.object({
+  rideId: Joi.string().uuid().required().messages({
+    'string.guid': 'Ride ID must be a valid UUID',
+    'any.required': 'Ride ID is required',
+  }),
+  defendantId: Joi.string().uuid().required().messages({
+    'string.guid': 'Defendant ID must be a valid UUID',
+    'any.required': 'Defendant ID is required',
+  }),
+  disputeType: Joi.string()
+    .valid('fare_dispute', 'safety_concern', 'service_quality', 'property_damage', 'route_deviation', 'deactivation_appeal', 'other')
+    .required()
+    .messages({
+      'any.only': 'Dispute type must be one of: fare_dispute, safety_concern, service_quality, property_damage, route_deviation, deactivation_appeal, other',
+      'any.required': 'Dispute type is required',
+    }),
+  title: Joi.string().trim().min(5).max(200).required().messages({
+    'string.min': 'Title must be at least 5 characters',
+    'string.max': 'Title must not exceed 200 characters',
+    'any.required': 'Title is required',
+  }),
+  description: Joi.string().trim().min(20).max(5000).required().messages({
+    'string.min': 'Description must be at least 20 characters',
+    'string.max': 'Description must not exceed 5000 characters',
+    'any.required': 'Description is required',
+  }),
+});
+
+/**
+ * Schema for adding dispute evidence.
+ */
+export const disputeEvidenceSchema = Joi.object({
+  evidenceType: Joi.string()
+    .valid('text', 'image', 'screenshot', 'video', 'gps_log', 'receipt', 'other')
+    .required()
+    .messages({
+      'any.only': 'Evidence type must be one of: text, image, screenshot, video, gps_log, receipt, other',
+      'any.required': 'Evidence type is required',
+    }),
+  content: Joi.string().trim().min(1).max(5000).required().messages({
+    'string.min': 'Content is required',
+    'string.max': 'Content must not exceed 5000 characters',
+    'any.required': 'Content is required',
+  }),
+  fileUrl: Joi.string().uri().max(2048).optional().allow(null, '').messages({
+    'string.uri': 'File URL must be a valid URL',
+    'string.max': 'File URL must not exceed 2048 characters',
+  }),
+});
+
+/**
+ * Schema for submitting a dispute review.
+ */
+export const disputeReviewSchema = Joi.object({
+  vote: Joi.string()
+    .valid('uphold', 'dismiss', 'partial')
+    .required()
+    .messages({
+      'any.only': 'Vote must be one of: uphold, dismiss, partial',
+      'any.required': 'Vote is required',
+    }),
+  reasoning: Joi.string().trim().min(20).max(5000).required().messages({
+    'string.min': 'Reasoning must be at least 20 characters',
+    'string.max': 'Reasoning must not exceed 5000 characters',
+    'any.required': 'Reasoning is required',
+  }),
+});
+
+/**
+ * Schema for appealing a dispute.
+ */
+export const disputeAppealSchema = Joi.object({
+  reason: Joi.string().trim().min(20).max(5000).required().messages({
+    'string.min': 'Appeal reason must be at least 20 characters',
+    'string.max': 'Appeal reason must not exceed 5000 characters',
+    'any.required': 'Appeal reason is required',
+  }),
+});
+
+/**
  * Schema for driver location updates.
  */
 export const updateLocationSchema = Joi.object({

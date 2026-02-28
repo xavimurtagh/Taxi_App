@@ -1,8 +1,11 @@
 import { Router } from 'express';
 import { query } from '../config/database.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, optionalAuth } from '../middleware/auth.js';
 import { validate } from '../middleware/validation.js';
 import { proposalSchema, voteSchema } from '../utils/validators.js';
+import { executeProposal, executeAllPending, getExecutionHistory, rollbackExecution } from '../services/proposalExecution.js';
+import { getGovernableParams } from '../services/platformConfig.js';
+import { calculateDistribution, approveDistribution, executeDistribution, getDistributionHistory, getUserPayouts, getDistributionDetails } from '../services/redistribution.js';
 
 const router = Router();
 
@@ -589,6 +592,276 @@ router.post('/proposals/:id/close', authenticate, async (req, res) => {
       error: 'Internal server error',
       message: 'An unexpected error occurred while closing the proposal',
     });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Proposal comments / discussion
+// ---------------------------------------------------------------------------
+
+/**
+ * GET /proposals/:id/comments
+ * Get discussion thread for a proposal.
+ */
+router.get('/proposals/:id/comments', optionalAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await query(
+      `SELECT pc.id, pc.proposal_id, pc.user_id, pc.parent_id,
+              pc.content, pc.is_hidden, pc.created_at,
+              u.first_name, u.last_name, u.role, u.is_moderator
+       FROM proposal_comments pc
+       JOIN users u ON pc.user_id = u.id
+       WHERE pc.proposal_id = $1
+       ORDER BY pc.created_at ASC`,
+      [id],
+    );
+
+    const comments = result.rows.map((r) => ({
+      id: r.id,
+      proposalId: r.proposal_id,
+      parentId: r.parent_id,
+      content: r.is_hidden ? '[This comment has been removed by a moderator]' : r.content,
+      isHidden: r.is_hidden,
+      author: { id: r.user_id, name: `${r.first_name} ${r.last_name}`, role: r.role, isModerator: r.is_moderator },
+      createdAt: r.created_at,
+    }));
+
+    return res.json({ comments });
+  } catch (err) {
+    console.error('[governance] GET /proposals/:id/comments error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * POST /proposals/:id/comments
+ * Add a comment to a proposal discussion.
+ */
+router.post('/proposals/:id/comments', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { content, parentId } = req.body;
+
+    if (!content || content.trim().length < 1) {
+      return res.status(400).json({ error: 'Comment content is required' });
+    }
+    if (content.length > 2000) {
+      return res.status(400).json({ error: 'Comment must be under 2000 characters' });
+    }
+
+    // Verify proposal exists
+    const proposalCheck = await query('SELECT id FROM governance_proposals WHERE id = $1', [id]);
+    if (proposalCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Proposal not found' });
+    }
+
+    // Verify parent comment exists if replying
+    if (parentId) {
+      const parentCheck = await query(
+        'SELECT id FROM proposal_comments WHERE id = $1 AND proposal_id = $2',
+        [parentId, id],
+      );
+      if (parentCheck.rows.length === 0) {
+        return res.status(404).json({ error: 'Parent comment not found' });
+      }
+    }
+
+    const result = await query(
+      `INSERT INTO proposal_comments (proposal_id, user_id, parent_id, content)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, proposal_id, user_id, parent_id, content, created_at`,
+      [id, req.user.id, parentId || null, content.trim()],
+    );
+
+    const c = result.rows[0];
+    return res.status(201).json({
+      comment: {
+        id: c.id,
+        proposalId: c.proposal_id,
+        parentId: c.parent_id,
+        content: c.content,
+        createdAt: c.created_at,
+      },
+    });
+  } catch (err) {
+    console.error('[governance] POST /proposals/:id/comments error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Proposal execution (auto-execute passed proposals)
+// ---------------------------------------------------------------------------
+
+/**
+ * POST /proposals/:id/execute
+ * Trigger execution of a passed proposal (moderator or system).
+ */
+router.post('/proposals/:id/execute', authenticate, async (req, res) => {
+  try {
+    const result = await executeProposal(req.params.id);
+    return res.json(result);
+  } catch (err) {
+    const statusCode = err.statusCode || 500;
+    return res.status(statusCode).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /execute-pending
+ * Execute all passed proposals that haven't been executed yet.
+ */
+router.post('/execute-pending', authenticate, async (req, res) => {
+  try {
+    const results = await executeAllPending();
+    return res.json({ results, executed: results.length });
+  } catch (err) {
+    console.error('[governance] POST /execute-pending error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /executions
+ * Get execution history for all proposals or a specific one.
+ */
+router.get('/executions', authenticate, async (req, res) => {
+  try {
+    const history = await getExecutionHistory(req.query.proposalId || null);
+    return res.json({ executions: history });
+  } catch (err) {
+    console.error('[governance] GET /executions error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * POST /executions/:id/rollback
+ * Rollback a previously executed proposal (moderator only).
+ */
+router.post('/executions/:id/rollback', authenticate, async (req, res) => {
+  try {
+    const result = await rollbackExecution(req.params.id);
+    return res.json(result);
+  } catch (err) {
+    const statusCode = err.statusCode || 500;
+    return res.status(statusCode).json({ error: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Platform configuration (governable parameters)
+// ---------------------------------------------------------------------------
+
+/**
+ * GET /config
+ * Get all governable platform parameters that can be changed via proposals.
+ */
+router.get('/config', optionalAuth, async (req, res) => {
+  try {
+    const params = await getGovernableParams();
+    return res.json({ config: params });
+  } catch (err) {
+    console.error('[governance] GET /config error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Surplus redistribution
+// ---------------------------------------------------------------------------
+
+/**
+ * POST /surplus/calculate
+ * Calculate surplus for a given period.
+ */
+router.post('/surplus/calculate', authenticate, async (req, res) => {
+  try {
+    const { periodStart, periodEnd } = req.body;
+    if (!periodStart || !periodEnd) {
+      return res.status(400).json({ error: 'periodStart and periodEnd are required' });
+    }
+    const result = await calculateDistribution(periodStart, periodEnd);
+    return res.json(result);
+  } catch (err) {
+    console.error('[governance] POST /surplus/calculate error:', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /surplus/:id/approve
+ * Approve a calculated distribution for payout.
+ */
+router.post('/surplus/:id/approve', authenticate, async (req, res) => {
+  try {
+    const result = await approveDistribution(req.params.id, req.user.id);
+    return res.json(result);
+  } catch (err) {
+    const statusCode = err.statusCode || 500;
+    return res.status(statusCode).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /surplus/:id/execute
+ * Execute an approved distribution — actually send Stripe payouts.
+ */
+router.post('/surplus/:id/execute', authenticate, async (req, res) => {
+  try {
+    const result = await executeDistribution(req.params.id);
+    return res.json(result);
+  } catch (err) {
+    const statusCode = err.statusCode || 500;
+    return res.status(statusCode).json({ error: err.message });
+  }
+});
+
+/**
+ * GET /surplus/history
+ * Get redistribution history.
+ */
+router.get('/surplus/history', authenticate, async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const result = await getDistributionHistory(page, limit);
+    return res.json(result);
+  } catch (err) {
+    console.error('[governance] GET /surplus/history error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /surplus/:id
+ * Get details of a specific distribution.
+ */
+router.get('/surplus/:id', authenticate, async (req, res) => {
+  try {
+    const result = await getDistributionDetails(req.params.id);
+    return res.json(result);
+  } catch (err) {
+    const statusCode = err.statusCode || 500;
+    return res.status(statusCode).json({ error: err.message });
+  }
+});
+
+/**
+ * GET /surplus/my-payouts
+ * Get current user's payout history.
+ */
+router.get('/my-payouts', authenticate, async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const result = await getUserPayouts(req.user.id, page, limit);
+    return res.json(result);
+  } catch (err) {
+    console.error('[governance] GET /my-payouts error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 });
 

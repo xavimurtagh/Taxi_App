@@ -10,6 +10,8 @@ import RideHistoryScreen from '../screens/passenger/RideHistoryScreen';
 import RatingScreen from '../screens/passenger/RatingScreen';
 import ProposalsScreen from '../screens/governance/ProposalsScreen';
 import VotingScreen from '../screens/governance/VotingScreen';
+import DisputesScreen from '../screens/governance/DisputesScreen';
+import ElectionScreen from '../screens/governance/ElectionScreen';
 import ProfileScreen from '../screens/shared/ProfileScreen';
 import SettingsScreen from '../screens/shared/SettingsScreen';
 import TransparencyScreen from '../screens/shared/TransparencyScreen';
@@ -96,6 +98,16 @@ const GovernanceStackScreen = () => (
       name="Transparency"
       component={TransparencyScreen}
       options={{ title: 'Platform Finances' }}
+    />
+    <GovernanceStack.Screen
+      name="Disputes"
+      component={DisputesScreen}
+      options={{ title: 'Disputes' }}
+    />
+    <GovernanceStack.Screen
+      name="Elections"
+      component={ElectionScreen}
+      options={{ title: 'Moderator Elections' }}
     />
   </GovernanceStack.Navigator>
 );

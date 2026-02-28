@@ -1,6 +1,8 @@
 import cron from 'node-cron';
 import { query } from '../config/database.js';
 import { finalizeExpiredProposals } from '../services/governance.js';
+import { expireModeratorTerms } from '../services/moderation.js';
+import { executeAllPending } from '../services/proposalExecution.js';
 
 /**
  * Start all scheduled background jobs
@@ -8,13 +10,18 @@ import { finalizeExpiredProposals } from '../services/governance.js';
 export function startScheduler() {
   console.log('[Scheduler] Starting background jobs...');
 
-  // Check for expired governance proposals every hour
+  // Check for expired governance proposals every hour, then auto-execute passed ones
   cron.schedule('0 * * * *', async () => {
     try {
       const results = await finalizeExpiredProposals();
       if (results.length > 0) {
         console.log(`[Scheduler] Finalized ${results.length} expired proposals:`,
           results.map(r => `${r.title} → ${r.outcome}`).join(', '));
+      }
+      // Auto-execute any newly passed proposals
+      const executed = await executeAllPending();
+      if (executed.length > 0) {
+        console.log(`[Scheduler] Auto-executed ${executed.length} passed proposals`);
       }
     } catch (error) {
       console.error('[Scheduler] Proposal finalization failed:', error.message);
@@ -109,6 +116,40 @@ export function startScheduler() {
       }
     } catch (error) {
       console.error('[Scheduler] Stale ride cleanup failed:', error.message);
+    }
+  });
+
+  // Transition moderator elections from nominations to voting phase every hour
+  cron.schedule('30 * * * *', async () => {
+    try {
+      const result = await query(
+        `UPDATE moderator_elections
+         SET status = 'voting'
+         WHERE status = 'nominations'
+           AND nominations_end <= NOW()
+         RETURNING id, title`
+      );
+
+      if (result.rows.length > 0) {
+        console.log(
+          `[Scheduler] Transitioned ${result.rows.length} election(s) to voting phase:`,
+          result.rows.map((r) => r.title).join(', ')
+        );
+      }
+    } catch (error) {
+      console.error('[Scheduler] Election phase transition failed:', error.message);
+    }
+  });
+
+  // Expire moderator terms daily at 1am
+  cron.schedule('0 1 * * *', async () => {
+    try {
+      const count = await expireModeratorTerms();
+      if (count > 0) {
+        console.log(`[Scheduler] Expired ${count} moderator term(s)`);
+      }
+    } catch (error) {
+      console.error('[Scheduler] Moderator term expiry check failed:', error.message);
     }
   });
 

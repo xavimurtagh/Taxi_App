@@ -92,6 +92,8 @@ async function mountRoutes() {
     { path: '/transparency', module: './routes/transparency.js' },
     { path: '/support', module: './routes/support.js' },
     { path: '/safety', module: './routes/safety.js' },
+    { path: '/moderation', module: './routes/moderation.js' },
+    { path: '/disputes', module: './routes/disputes.js' },
   ];
 
   for (const route of routeModules) {

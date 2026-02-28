@@ -10,6 +10,8 @@ import DriverRatingScreen from '../screens/driver/RatingScreen';
 import EarningsScreen from '../screens/driver/EarningsScreen';
 import ProposalsScreen from '../screens/governance/ProposalsScreen';
 import VotingScreen from '../screens/governance/VotingScreen';
+import DisputesScreen from '../screens/governance/DisputesScreen';
+import ElectionScreen from '../screens/governance/ElectionScreen';
 import TransparencyScreen from '../screens/shared/TransparencyScreen';
 import ProfileScreen from '../screens/shared/ProfileScreen';
 import SettingsScreen from '../screens/shared/SettingsScreen';
@@ -96,6 +98,16 @@ const GovernanceStackScreen = () => (
       name="Transparency"
       component={TransparencyScreen}
       options={{ title: 'Platform Finances' }}
+    />
+    <GovernanceStack.Screen
+      name="Disputes"
+      component={DisputesScreen}
+      options={{ title: 'Disputes' }}
+    />
+    <GovernanceStack.Screen
+      name="Elections"
+      component={ElectionScreen}
+      options={{ title: 'Moderator Elections' }}
     />
   </GovernanceStack.Navigator>
 );

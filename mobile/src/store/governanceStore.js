@@ -105,6 +105,60 @@ const useGovernanceStore = create((set, get) => ({
   },
 
   /**
+   * Fetch comments for a proposal.
+   */
+  fetchComments: async (proposalId) => {
+    try {
+      const response = await apiGet(`/governance/proposals/${proposalId}/comments`);
+      return response.data.comments || [];
+    } catch (error) {
+      console.log('Failed to fetch comments:', error.message);
+      return [];
+    }
+  },
+
+  /**
+   * Post a comment on a proposal.
+   */
+  addComment: async (proposalId, content, parentId = null) => {
+    try {
+      const response = await post(`/governance/proposals/${proposalId}/comments`, {
+        content,
+        parentId,
+      });
+      return response.data.comment;
+    } catch (error) {
+      throw new Error(error.response?.data?.error || 'Failed to post comment');
+    }
+  },
+
+  /**
+   * Fetch governable platform config parameters.
+   */
+  fetchConfig: async () => {
+    try {
+      const response = await apiGet('/governance/config');
+      return response.data.config || {};
+    } catch (error) {
+      console.log('Failed to fetch config:', error.message);
+      return {};
+    }
+  },
+
+  /**
+   * Fetch user's payout history from surplus redistribution.
+   */
+  fetchMyPayouts: async () => {
+    try {
+      const response = await apiGet('/governance/my-payouts');
+      return response.data.payouts || [];
+    } catch (error) {
+      console.log('Failed to fetch payouts:', error.message);
+      return [];
+    }
+  },
+
+  /**
    * Set the active proposal for detail view.
    */
   setActiveProposal: (proposal) => set({ activeProposal: proposal }),
