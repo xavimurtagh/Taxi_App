@@ -12,21 +12,7 @@ const DRIVER_LOCATIONS_KEY = 'driver:locations';
 const DRIVER_META_PREFIX = 'driver:meta:';
 
 /**
- * Default search radius in kilometres for accessible driver matching.
- */
-const DEFAULT_RADIUS_KM = 10;
-
-/**
- * Maximum number of accessible drivers to return.
- */
-const MAX_RESULTS = 20;
-
-// ---------------------------------------------------------------------------
-// Accessibility feature definitions
-// ---------------------------------------------------------------------------
-
-/**
- * All recognised accessibility features with human-readable descriptions.
+ * Full list of supported accessibility features with human-readable descriptions.
  */
 const ACCESSIBILITY_OPTIONS = [
   {
@@ -38,13 +24,13 @@ const ACCESSIBILITY_OPTIONS = [
   {
     key: 'wheelchair_lift',
     label: 'Wheelchair Lift',
-    description: 'Vehicle has a powered wheelchair lift for passengers who use wheelchairs',
+    description: 'Vehicle has a powered wheelchair lift for secure boarding',
     category: 'mobility',
   },
   {
-    key: 'wheelchair_securement',
-    label: 'Wheelchair Securement',
-    description: 'Vehicle has proper securement devices for wheelchairs during transit',
+    key: 'wheelchair_space',
+    label: 'Wheelchair Space',
+    description: 'Vehicle has dedicated space to secure a wheelchair during transit',
     category: 'mobility',
   },
   {
@@ -54,34 +40,40 @@ const ACCESSIBILITY_OPTIONS = [
     category: 'mobility',
   },
   {
-    key: 'step_free_access',
-    label: 'Step-Free Access',
-    description: 'Vehicle provides step-free access for passengers with limited mobility',
+    key: 'hand_controls',
+    label: 'Hand Controls',
+    description: 'Driver uses hand controls (informational for passenger awareness)',
     category: 'mobility',
   },
   {
     key: 'hearing_assistance',
     label: 'Hearing Assistance',
-    description: 'Driver is trained to assist passengers who are deaf or hard of hearing',
+    description: 'Driver is trained in communicating with hearing-impaired passengers',
     category: 'sensory',
   },
   {
     key: 'visual_assistance',
     label: 'Visual Assistance',
-    description: 'Driver is trained to assist passengers who are blind or visually impaired',
+    description: 'Driver is trained in assisting visually impaired passengers',
     category: 'sensory',
   },
   {
     key: 'sign_language',
     label: 'Sign Language',
-    description: 'Driver knows sign language and can communicate with deaf passengers',
+    description: 'Driver knows sign language for communication with deaf passengers',
     category: 'sensory',
   },
   {
     key: 'service_animal_friendly',
     label: 'Service Animal Friendly',
-    description: 'Vehicle accommodates service animals at no additional charge',
+    description: 'Driver welcomes service animals in the vehicle',
     category: 'general',
+  },
+  {
+    key: 'step_stool',
+    label: 'Step Stool',
+    description: 'Vehicle is equipped with a step stool for easier entry and exit',
+    category: 'mobility',
   },
   {
     key: 'child_seat',
@@ -89,101 +81,46 @@ const ACCESSIBILITY_OPTIONS = [
     description: 'Vehicle is equipped with a child safety seat',
     category: 'general',
   },
-  {
-    key: 'stretcher_accessible',
-    label: 'Stretcher Accessible',
-    description: 'Vehicle can accommodate a stretcher for passengers with medical needs',
-    category: 'medical',
-  },
 ];
 
 /**
- * Set of valid accessibility feature keys for fast lookup.
+ * Set of valid accessibility feature keys for quick validation.
  */
 const VALID_FEATURE_KEYS = new Set(ACCESSIBILITY_OPTIONS.map((opt) => opt.key));
-
-// ---------------------------------------------------------------------------
-// getAccessibilityOptions
-// ---------------------------------------------------------------------------
-
-/**
- * Return the full list of available accessibility features with descriptions.
- *
- * @returns {Array<{ key: string, label: string, description: string, category: string }>}
- */
-export function getAccessibilityOptions() {
-  return ACCESSIBILITY_OPTIONS;
-}
-
-// ---------------------------------------------------------------------------
-// validateAccessibilityMatch
-// ---------------------------------------------------------------------------
-
-/**
- * Check if a driver's accessibility features can accommodate the passenger's needs.
- *
- * Every feature in the passenger's needs array must be present and set to true
- * in the driver's accessibility_features JSONB.
- *
- * @param {{ accessibility_features: object }} driverProfile - Driver profile row with accessibility_features
- * @param {string[]} passengerNeeds - Array of accessibility feature keys the passenger requires
- * @returns {{ isMatch: boolean, matchedFeatures: string[], missingFeatures: string[] }}
- */
-export function validateAccessibilityMatch(driverProfile, passengerNeeds) {
-  if (!passengerNeeds || passengerNeeds.length === 0) {
-    return { isMatch: true, matchedFeatures: [], missingFeatures: [] };
-  }
-
-  const driverFeatures = driverProfile.accessibility_features || {};
-  const matchedFeatures = [];
-  const missingFeatures = [];
-
-  for (const need of passengerNeeds) {
-    if (driverFeatures[need] === true) {
-      matchedFeatures.push(need);
-    } else {
-      missingFeatures.push(need);
-    }
-  }
-
-  return {
-    isMatch: missingFeatures.length === 0,
-    matchedFeatures,
-    missingFeatures,
-  };
-}
 
 // ---------------------------------------------------------------------------
 // matchAccessibleDriver
 // ---------------------------------------------------------------------------
 
 /**
- * Find nearby drivers whose accessibility features match the passenger's needs.
+ * Find nearby drivers whose accessibility_features match the passenger's needs.
  *
- * Uses the Redis geospatial index to find drivers within the search radius,
- * then filters by accessibility features from the database.
+ * Uses the Redis geospatial index to find drivers within a 10 km radius,
+ * then filters by accessibility feature match. Only online, verified drivers
+ * whose profiles contain ALL of the requested accessibility features are returned.
  *
  * @param {number} pickupLat - Pickup latitude
  * @param {number} pickupLng - Pickup longitude
  * @param {string[]} accessibilityNeeds - Array of required accessibility feature keys
- * @param {number} [radiusKm=10] - Search radius in kilometres
  * @returns {Promise<Array<{
  *   driverId: string,
  *   distance: number,
  *   lat: number,
  *   lng: number,
- *   matchedFeatures: string[],
  *   vehicleType: string,
- *   rating: number
+ *   rating: number,
+ *   accessibilityFeatures: string[]
  * }>>}
  */
-export async function matchAccessibleDriver(pickupLat, pickupLng, accessibilityNeeds, radiusKm = DEFAULT_RADIUS_KM) {
+export async function matchAccessibleDriver(pickupLat, pickupLng, accessibilityNeeds) {
   if (!accessibilityNeeds || accessibilityNeeds.length === 0) {
     return [];
   }
 
+  // Search within 10 km for accessible drivers (wider radius than standard)
+  const radiusKm = 10;
+
   try {
-    // Step 1: Find nearby drivers from Redis geo index
     const results = await redis.georadius(
       DRIVER_LOCATIONS_KEY,
       pickupLng,
@@ -199,92 +136,61 @@ export async function matchAccessibleDriver(pickupLat, pickupLng, accessibilityN
       return [];
     }
 
-    // Collect driver IDs that are online
-    const candidateDrivers = [];
+    // Collect driver IDs for a batch database query
+    const driverIds = results.map((r) => r[0]);
+
+    // Fetch accessibility features from driver_profiles for all nearby drivers
+    const profilesResult = await query(
+      `SELECT dp.user_id, dp.accessibility_features, dp.vehicle_type,
+              u.rating_avg
+       FROM driver_profiles dp
+       JOIN users u ON u.id = dp.user_id
+       WHERE dp.user_id = ANY($1)
+         AND dp.is_online = true
+         AND dp.documents_verified = true
+         AND dp.background_check_status = 'passed'`,
+      [driverIds],
+    );
+
+    // Index profiles by user_id for fast lookup
+    const profileMap = new Map();
+    for (const row of profilesResult.rows) {
+      profileMap.set(row.user_id, row);
+    }
+
+    const matchedDrivers = [];
 
     for (const result of results) {
       const driverId = result[0];
       const distance = parseFloat(result[1]);
       const [lng, lat] = result[2].map(Number);
 
-      // Check driver metadata to ensure they are online and verified
-      const metaKey = `${DRIVER_META_PREFIX}${driverId}`;
-      const meta = await redis.hgetall(metaKey);
-
-      if (!meta || Object.keys(meta).length === 0) {
+      const profile = profileMap.get(driverId);
+      if (!profile) {
         continue;
       }
 
-      const isOnline = meta.status === 'online' || !meta.status;
-      const isVerified = meta.isVerified !== 'false';
-
-      if (!isOnline || !isVerified) {
-        continue;
-      }
-
-      candidateDrivers.push({
-        driverId,
-        distance,
-        lat,
-        lng,
-        vehicleType: meta.vehicleType || 'economy',
-        rating: parseFloat(meta.rating) || 4.0,
-      });
-    }
-
-    if (candidateDrivers.length === 0) {
-      return [];
-    }
-
-    // Step 2: Fetch accessibility features from the database for candidate drivers
-    const driverIds = candidateDrivers.map((d) => d.driverId);
-    const placeholders = driverIds.map((_, i) => `$${i + 1}`).join(', ');
-
-    const profilesResult = await query(
-      `SELECT dp.user_id, dp.accessibility_features
-       FROM driver_profiles dp
-       WHERE dp.user_id IN (${placeholders})
-         AND dp.is_online = true`,
-      driverIds,
-    );
-
-    // Build a lookup map: driverId -> accessibility_features
-    const featuresByDriver = new Map();
-    for (const row of profilesResult.rows) {
-      featuresByDriver.set(row.user_id, row.accessibility_features || {});
-    }
-
-    // Step 3: Filter drivers that match all accessibility needs
-    const matchedDrivers = [];
-
-    for (const driver of candidateDrivers) {
-      const driverFeatures = featuresByDriver.get(driver.driverId);
-
-      if (!driverFeatures) {
-        continue;
-      }
-
-      const validation = validateAccessibilityMatch(
-        { accessibility_features: driverFeatures },
-        accessibilityNeeds,
+      // Check if the driver's accessibility features satisfy all passenger needs
+      const driverFeatures = profile.accessibility_features || {};
+      const hasAllFeatures = accessibilityNeeds.every(
+        (need) => driverFeatures[need] === true,
       );
 
-      if (validation.isMatch) {
-        matchedDrivers.push({
-          driverId: driver.driverId,
-          distance: driver.distance,
-          lat: driver.lat,
-          lng: driver.lng,
-          matchedFeatures: validation.matchedFeatures,
-          vehicleType: driver.vehicleType,
-          rating: driver.rating,
-        });
+      if (!hasAllFeatures) {
+        continue;
       }
 
-      // Cap results
-      if (matchedDrivers.length >= MAX_RESULTS) {
-        break;
-      }
+      matchedDrivers.push({
+        driverId,
+        distance: Math.round(distance * 100) / 100,
+        lat,
+        lng,
+        vehicleType: profile.vehicle_type || 'accessible',
+        rating: parseFloat(profile.rating_avg) || 4.0,
+        accessibilityFeatures: Object.keys(driverFeatures).filter(
+          (key) => driverFeatures[key] === true,
+        ),
+      });
     }
 
     return matchedDrivers;
@@ -295,23 +201,71 @@ export async function matchAccessibleDriver(pickupLat, pickupLng, accessibilityN
 }
 
 // ---------------------------------------------------------------------------
+// validateAccessibilityMatch
+// ---------------------------------------------------------------------------
+
+/**
+ * Check if a driver can accommodate the passenger's accessibility needs.
+ *
+ * @param {object} driverProfile - Driver profile object with accessibility_features JSONB
+ * @param {string[]} passengerNeeds - Array of required accessibility feature keys
+ * @returns {{ isMatch: boolean, matched: string[], unmatched: string[] }}
+ */
+export function validateAccessibilityMatch(driverProfile, passengerNeeds) {
+  if (!passengerNeeds || passengerNeeds.length === 0) {
+    return { isMatch: true, matched: [], unmatched: [] };
+  }
+
+  const driverFeatures = driverProfile?.accessibility_features || {};
+  const matched = [];
+  const unmatched = [];
+
+  for (const need of passengerNeeds) {
+    if (driverFeatures[need] === true) {
+      matched.push(need);
+    } else {
+      unmatched.push(need);
+    }
+  }
+
+  return {
+    isMatch: unmatched.length === 0,
+    matched,
+    unmatched,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// getAccessibilityOptions
+// ---------------------------------------------------------------------------
+
+/**
+ * Return the full list of available accessibility features with descriptions.
+ *
+ * @returns {Array<{ key: string, label: string, description: string, category: string }>}
+ */
+export function getAccessibilityOptions() {
+  return ACCESSIBILITY_OPTIONS;
+}
+
+// ---------------------------------------------------------------------------
 // updateDriverAccessibility
 // ---------------------------------------------------------------------------
 
 /**
  * Update a driver's accessibility features in the database.
+ * Only accepts valid feature keys; unknown keys are silently ignored.
  *
- * @param {string} driverId - The driver's user UUID
- * @param {object} features - JSONB object of accessibility features (key: boolean)
- * @returns {Promise<object>} The updated accessibility_features
- * @throws {Error} If the driver profile is not found
+ * @param {string} driverId - The driver's user ID (UUID)
+ * @param {object} features - Object mapping feature keys to boolean values
+ * @returns {Promise<object>} The updated accessibility_features JSONB
  */
 export async function updateDriverAccessibility(driverId, features) {
-  // Validate that all feature keys are recognised
-  const validatedFeatures = {};
+  // Filter to only valid feature keys
+  const sanitised = {};
   for (const [key, value] of Object.entries(features)) {
-    if (VALID_FEATURE_KEYS.has(key)) {
-      validatedFeatures[key] = Boolean(value);
+    if (VALID_FEATURE_KEYS.has(key) && typeof value === 'boolean') {
+      sanitised[key] = value;
     }
   }
 
@@ -320,16 +274,32 @@ export async function updateDriverAccessibility(driverId, features) {
      SET accessibility_features = $1
      WHERE user_id = $2
      RETURNING user_id, accessibility_features`,
-    [JSON.stringify(validatedFeatures), driverId],
+    [JSON.stringify(sanitised), driverId],
   );
 
   if (result.rows.length === 0) {
-    const error = new Error('Driver profile not found');
-    error.statusCode = 404;
-    throw error;
+    return null;
+  }
+
+  // Also update Redis driver metadata if the driver is currently online
+  try {
+    const metaKey = `${DRIVER_META_PREFIX}${driverId}`;
+    const exists = await redis.exists(metaKey);
+    if (exists) {
+      await redis.hset(
+        metaKey,
+        'accessibilityFeatures',
+        JSON.stringify(sanitised),
+      );
+    }
+  } catch (err) {
+    console.warn('[accessibility] Failed to update Redis meta:', err.message);
   }
 
   return result.rows[0].accessibility_features;
 }
 
+/**
+ * Exported set of valid feature keys for use in validation schemas.
+ */
 export { VALID_FEATURE_KEYS };
