@@ -27,6 +27,12 @@ export const VEHICLE_TYPES = [
     icon: 'accessibility',
     multiplier: '1x',
   },
+  {
+    id: 'pool',
+    label: 'Pool',
+    icon: 'people',
+    multiplier: '0.7x',
+  },
 ];
 
 export const RIDE_STATUSES = {

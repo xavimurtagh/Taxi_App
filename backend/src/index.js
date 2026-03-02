@@ -94,6 +94,12 @@ async function mountRoutes() {
     { path: '/safety', module: './routes/safety.js' },
     { path: '/moderation', module: './routes/moderation.js' },
     { path: '/disputes', module: './routes/disputes.js' },
+    { path: '/notifications', module: './routes/notifications.js' },
+    { path: '/chat', module: './routes/chat.js' },
+    { path: '/scheduling', module: './routes/scheduling.js' },
+    { path: '/ridesharing', module: './routes/ridesharing.js' },
+    { path: '/referrals', module: './routes/referrals.js' },
+    { path: '/vehicle-types', module: './routes/vehicleTypes.js' },
   ];
 
   for (const route of routeModules) {
