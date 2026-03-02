@@ -10,7 +10,7 @@ const useReferralStore = create((set, get) => ({
   error: null,
 
   /**
-   * Fetch the current user's referral code.
+   * Fetch the user's referral code.
    */
   fetchReferralCode: async () => {
     set({ isLoading: true, error: null });
@@ -27,7 +27,7 @@ const useReferralStore = create((set, get) => ({
   },
 
   /**
-   * Apply a referral code.
+   * Apply a referral code (for new users).
    */
   applyCode: async (code) => {
     set({ isLoading: true, error: null });
@@ -44,7 +44,7 @@ const useReferralStore = create((set, get) => ({
   },
 
   /**
-   * Fetch the list of referrals made by the user.
+   * Fetch the user's referral list.
    */
   fetchReferrals: async () => {
     set({ isLoading: true, error: null });
@@ -78,21 +78,20 @@ const useReferralStore = create((set, get) => ({
   },
 
   /**
-   * Claim a reward by ID.
+   * Claim a specific reward by ID.
    */
   claimReward: async (id) => {
     set({ isLoading: true, error: null });
     try {
       const response = await post(`/referrals/rewards/${id}/claim`);
       const result = response.data;
-
+      // Remove claimed reward from available rewards
       set((state) => ({
-        rewards: state.rewards.map((r) =>
-          (r.id || r._id) === id ? { ...r, claimed: true } : r
+        rewards: state.rewards.filter(
+          (reward) => (reward.id || reward._id) !== id
         ),
         isLoading: false,
       }));
-
       return result;
     } catch (error) {
       const message = error.response?.data?.message || 'Failed to claim reward.';
@@ -102,7 +101,7 @@ const useReferralStore = create((set, get) => ({
   },
 
   /**
-   * Fetch referral statistics.
+   * Fetch referral stats (total referrals, qualified, rewards earned).
    */
   fetchStats: async () => {
     set({ isLoading: true, error: null });

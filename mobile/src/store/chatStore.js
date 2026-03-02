@@ -3,22 +3,20 @@ import { get as apiGet } from '../services/api';
 import { getSocket } from '../services/socket';
 
 const useChatStore = create((set, get) => ({
-  messages: {},
-  typing: {},
-  unreadCounts: {},
+  messages: {},       // Map by rideId -> array of messages
+  typing: {},         // Map by rideId -> boolean
+  unreadCounts: {},   // Map by rideId -> number
 
   /**
-   * Fetch chat messages for a ride from the API.
+   * Fetch chat messages for a specific ride.
    */
   fetchMessages: async (rideId) => {
     try {
       const response = await apiGet(`/chat/${rideId}/messages`);
       const msgs = response.data.messages || response.data || [];
-
       set((state) => ({
         messages: { ...state.messages, [rideId]: msgs },
       }));
-
       return msgs;
     } catch (error) {
       const message = error.response?.data?.message || 'Failed to load messages.';
@@ -27,7 +25,7 @@ const useChatStore = create((set, get) => ({
   },
 
   /**
-   * Send a message via socket.
+   * Send a chat message for a specific ride via socket.
    */
   sendMessage: (rideId, text) => {
     const socket = getSocket();
@@ -37,7 +35,7 @@ const useChatStore = create((set, get) => ({
   },
 
   /**
-   * Add a message to the local store (called when receiving from socket or after sending).
+   * Add a single message to the store for a ride.
    */
   addMessage: (rideId, message) => {
     set((state) => {
@@ -49,7 +47,7 @@ const useChatStore = create((set, get) => ({
   },
 
   /**
-   * Mark all messages as read for a ride.
+   * Mark messages as read for a ride (reset unread count).
    */
   markAsRead: (rideId) => {
     set((state) => ({
@@ -58,7 +56,7 @@ const useChatStore = create((set, get) => ({
   },
 
   /**
-   * Set typing status for a ride.
+   * Set typing indicator for a ride.
    */
   setTyping: (rideId, isTyping) => {
     set((state) => ({

@@ -8,7 +8,7 @@ const useSchedulingStore = create((set, get) => ({
   error: null,
 
   /**
-   * Fetch all scheduled rides.
+   * Fetch all scheduled rides for the user.
    */
   fetchScheduledRides: async () => {
     set({ isLoading: true, error: null });
@@ -32,12 +32,10 @@ const useSchedulingStore = create((set, get) => ({
     try {
       const response = await post('/scheduling', data);
       const ride = response.data.ride || response.data;
-
       set((state) => ({
         scheduledRides: [ride, ...state.scheduledRides],
         isLoading: false,
       }));
-
       return ride;
     } catch (error) {
       const message = error.response?.data?.message || 'Failed to schedule ride.';
@@ -47,18 +45,19 @@ const useSchedulingStore = create((set, get) => ({
   },
 
   /**
-   * Cancel a scheduled ride.
+   * Cancel a scheduled ride by ID.
    */
   cancelScheduledRide: async (id) => {
     set({ isLoading: true, error: null });
     try {
       await del(`/scheduling/${id}`);
-
       set((state) => ({
         scheduledRides: state.scheduledRides.filter(
-          (r) => (r.id || r._id) !== id
+          (ride) => (ride.id || ride._id) !== id
         ),
-        upcoming: state.upcoming.filter((r) => (r.id || r._id) !== id),
+        upcoming: state.upcoming.filter(
+          (ride) => (ride.id || ride._id) !== id
+        ),
         isLoading: false,
       }));
     } catch (error) {
@@ -86,25 +85,23 @@ const useSchedulingStore = create((set, get) => ({
   },
 
   /**
-   * Update an existing scheduled ride.
+   * Update a scheduled ride by ID.
    */
   updateScheduledRide: async (id, data) => {
     set({ isLoading: true, error: null });
     try {
       const response = await put(`/scheduling/${id}`, data);
-      const updatedRide = response.data.ride || response.data;
-
+      const updated = response.data.ride || response.data;
       set((state) => ({
-        scheduledRides: state.scheduledRides.map((r) =>
-          (r.id || r._id) === id ? updatedRide : r
+        scheduledRides: state.scheduledRides.map((ride) =>
+          (ride.id || ride._id) === id ? updated : ride
         ),
-        upcoming: state.upcoming.map((r) =>
-          (r.id || r._id) === id ? updatedRide : r
+        upcoming: state.upcoming.map((ride) =>
+          (ride.id || ride._id) === id ? updated : ride
         ),
         isLoading: false,
       }));
-
-      return updatedRide;
+      return updated;
     } catch (error) {
       const message = error.response?.data?.message || 'Failed to update scheduled ride.';
       set({ isLoading: false, error: message });
