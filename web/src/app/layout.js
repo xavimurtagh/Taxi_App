@@ -9,6 +9,10 @@ const navItems = [
   { href: '/',              label: 'Dashboard',     icon: '\u25A3', section: 'public' },
   { href: '/transparency',  label: 'Transparency',  icon: '\u25C8', section: 'public' },
   { href: '/governance',    label: 'Governance',    icon: '\u2691', section: 'public' },
+  { href: '/vehicles',      label: 'Vehicles',      icon: '\u25CE', section: 'public' },
+  { href: '/scheduling',    label: 'Schedule',      icon: '\u29D6', section: 'manage' },
+  { href: '/chat',          label: 'Chat',          icon: '\u2709', section: 'manage' },
+  { href: '/referrals',     label: 'Referrals',     icon: '\u2606', section: 'manage' },
   { href: '/disputes',      label: 'Disputes',      icon: '\u2696', section: 'manage' },
   { href: '/admin',         label: 'Admin',         icon: '\u2699', section: 'manage' },
 ];
