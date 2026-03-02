@@ -27,15 +27,15 @@ const RideSharingScreen = ({ navigation }) => {
   const [mySharedRides, setMySharedRides] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isLoadingMyRides, setIsLoadingMyRides] = useState(false);
-  const [joiningId, setJoiningId] = useState(null);
+  const [joiningRideId, setJoiningRideId] = useState(null);
 
   useEffect(() => {
     if (activeTab === 'my') {
-      loadMySharedRides();
+      fetchMySharedRides();
     }
   }, [activeTab]);
 
-  const loadMySharedRides = async () => {
+  const fetchMySharedRides = async () => {
     setIsLoadingMyRides(true);
     try {
       const response = await apiGet('/rides/shared/my');
@@ -63,7 +63,7 @@ const RideSharingScreen = ({ navigation }) => {
       const results = response.data.rides || response.data || [];
       setSearchResults(results);
       if (results.length === 0) {
-        Alert.alert('No rides found', 'No compatible shared rides are available right now.');
+        Alert.alert('No Results', 'No compatible shared rides found. Try adjusting your route.');
       }
     } catch (err) {
       Alert.alert('Error', 'Failed to search for shared rides.');
@@ -73,7 +73,7 @@ const RideSharingScreen = ({ navigation }) => {
   };
 
   const handleJoinRide = async (rideId) => {
-    setJoiningId(rideId);
+    setJoiningRideId(rideId);
     try {
       await post(`/rides/shared/${rideId}/join`);
       Alert.alert('Success', 'You have joined the shared ride!');
@@ -82,12 +82,12 @@ const RideSharingScreen = ({ navigation }) => {
         prev.filter((r) => (r.id || r._id) !== rideId)
       );
       if (activeTab === 'my') {
-        loadMySharedRides();
+        fetchMySharedRides();
       }
     } catch (err) {
       Alert.alert('Error', err.response?.data?.message || 'Failed to join ride.');
     } finally {
-      setJoiningId(null);
+      setJoiningRideId(null);
     }
   };
 
@@ -95,33 +95,30 @@ const RideSharingScreen = ({ navigation }) => {
     const rideId = item.id || item._id;
     const passengers = item.passengers || [];
     const maxPassengers = item.maxPassengers || 4;
-    const farePerPerson = item.farePerPerson || item.fare;
-    const originalFare = item.originalFare || item.estimatedFare;
-    const savings = originalFare && farePerPerson
-      ? originalFare - farePerPerson
-      : item.savings || 0;
+    const estimatedFare = item.fareEstimate || item.fare || 0;
+    const savings = item.savings || item.estimatedSavings || 0;
 
     return (
       <View style={styles.rideCard}>
-        {/* Route */}
-        <View style={styles.routeContainer}>
-          <View style={styles.routeRow}>
-            <View style={styles.routeDotGreen} />
-            <Text style={styles.routeAddress} numberOfLines={1}>
-              {item.pickup?.address || 'Pickup'}
-            </Text>
-          </View>
-          <View style={styles.routeLine} />
-          <View style={styles.routeRow}>
-            <View style={styles.routeDotRed} />
-            <Text style={styles.routeAddress} numberOfLines={1}>
-              {item.dropoff?.address || 'Dropoff'}
-            </Text>
+        <View style={styles.rideCardHeader}>
+          <View style={styles.routeContainer}>
+            <View style={styles.routeRow}>
+              <View style={styles.routeDotGreen} />
+              <Text style={styles.routeAddress} numberOfLines={1}>
+                {item.pickup?.address || 'Pickup'}
+              </Text>
+            </View>
+            <View style={styles.routeLine} />
+            <View style={styles.routeRow}>
+              <View style={styles.routeDotRed} />
+              <Text style={styles.routeAddress} numberOfLines={1}>
+                {item.dropoff?.address || 'Dropoff'}
+              </Text>
+            </View>
           </View>
         </View>
 
-        {/* Details */}
-        <View style={styles.rideDetails}>
+        <View style={styles.rideCardDetails}>
           <View style={styles.detailItem}>
             <Text style={styles.detailLabel}>Passengers</Text>
             <Text style={styles.detailValue}>
@@ -131,23 +128,20 @@ const RideSharingScreen = ({ navigation }) => {
           <View style={styles.detailItem}>
             <Text style={styles.detailLabel}>Your Fare</Text>
             <Text style={styles.detailValuePrimary}>
-              {formatCurrency(farePerPerson)}
+              {formatCurrency(estimatedFare)}
             </Text>
           </View>
-          {savings > 0 && (
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>You Save</Text>
-              <Text style={styles.savingsValue}>
-                {formatCurrency(savings)}
-              </Text>
-            </View>
-          )}
+          <View style={styles.detailItem}>
+            <Text style={styles.detailLabel}>You Save</Text>
+            <Text style={styles.detailValueSavings}>
+              {formatCurrency(savings)}
+            </Text>
+          </View>
         </View>
 
-        {/* Departure time if available */}
         {item.departureTime && (
-          <Text style={styles.departureText}>
-            Departs: {new Date(item.departureTime).toLocaleTimeString('en-US', {
+          <Text style={styles.departureTime}>
+            Departing: {new Date(item.departureTime).toLocaleTimeString('en-US', {
               hour: 'numeric',
               minute: '2-digit',
               hour12: true,
@@ -155,13 +149,15 @@ const RideSharingScreen = ({ navigation }) => {
           </Text>
         )}
 
-        {/* Join Button */}
         <TouchableOpacity
-          style={[styles.joinButton, joiningId === rideId && styles.buttonDisabled]}
+          style={[
+            styles.joinButton,
+            joiningRideId === rideId && styles.buttonDisabled,
+          ]}
           onPress={() => handleJoinRide(rideId)}
-          disabled={joiningId === rideId}
+          disabled={joiningRideId === rideId}
         >
-          {joiningId === rideId ? (
+          {joiningRideId === rideId ? (
             <ActivityIndicator size="small" color={COLORS.textOnPrimary} />
           ) : (
             <Text style={styles.joinButtonText}>Join Ride</Text>
@@ -171,27 +167,44 @@ const RideSharingScreen = ({ navigation }) => {
     );
   };
 
-  const renderMySharedRide = ({ item }) => {
-    const rideId = item.id || item._id;
+  const renderMyRide = ({ item }) => {
     const passengers = item.passengers || [];
-    const farePerPerson = item.farePerPerson || item.fare;
-    const totalFare = item.totalFare || item.fare;
+    const totalFare = item.totalFare || item.fare || 0;
 
     return (
       <View style={styles.rideCard}>
-        {/* Route */}
-        <View style={styles.routeContainer}>
-          <View style={styles.routeRow}>
-            <View style={styles.routeDotGreen} />
-            <Text style={styles.routeAddress} numberOfLines={1}>
-              {item.pickup?.address || 'Pickup'}
-            </Text>
+        <View style={styles.rideCardHeader}>
+          <View style={styles.routeContainer}>
+            <View style={styles.routeRow}>
+              <View style={styles.routeDotGreen} />
+              <Text style={styles.routeAddress} numberOfLines={1}>
+                {item.pickup?.address || 'Pickup'}
+              </Text>
+            </View>
+            <View style={styles.routeLine} />
+            <View style={styles.routeRow}>
+              <View style={styles.routeDotRed} />
+              <Text style={styles.routeAddress} numberOfLines={1}>
+                {item.dropoff?.address || 'Dropoff'}
+              </Text>
+            </View>
           </View>
-          <View style={styles.routeLine} />
-          <View style={styles.routeRow}>
-            <View style={styles.routeDotRed} />
-            <Text style={styles.routeAddress} numberOfLines={1}>
-              {item.dropoff?.address || 'Dropoff'}
+          <View
+            style={[
+              styles.statusBadge,
+              item.status === 'active' && styles.statusBadgeActive,
+              item.status === 'completed' && styles.statusBadgeCompleted,
+            ]}
+          >
+            <Text
+              style={[
+                styles.statusBadgeText,
+                item.status === 'active' && styles.statusBadgeTextActive,
+                item.status === 'completed' && styles.statusBadgeTextCompleted,
+              ]}
+            >
+              {(item.status || 'pending').charAt(0).toUpperCase() +
+                (item.status || 'pending').slice(1)}
             </Text>
           </View>
         </View>
@@ -208,13 +221,13 @@ const RideSharingScreen = ({ navigation }) => {
                   {(passenger.name || 'U').charAt(0).toUpperCase()}
                 </Text>
               </View>
-              <Text style={styles.participantName}>
+              <Text style={styles.participantName} numberOfLines={1}>
                 {passenger.name || 'Passenger'}
               </Text>
-              {passenger.isMe && (
-                <View style={styles.youBadge}>
-                  <Text style={styles.youBadgeText}>You</Text>
-                </View>
+              {passenger.fareShare != null && (
+                <Text style={styles.participantFare}>
+                  {formatCurrency(passenger.fareShare)}
+                </Text>
               )}
             </View>
           ))}
@@ -222,53 +235,31 @@ const RideSharingScreen = ({ navigation }) => {
 
         {/* Fare Split Breakdown */}
         <View style={styles.fareSplitSection}>
-          <Text style={styles.fareSplitTitle}>Fare Breakdown</Text>
           <View style={styles.fareSplitRow}>
-            <Text style={styles.fareSplitLabel}>Total Ride Fare</Text>
+            <Text style={styles.fareSplitLabel}>Total Fare</Text>
             <Text style={styles.fareSplitValue}>
               {formatCurrency(totalFare)}
             </Text>
           </View>
           <View style={styles.fareSplitRow}>
-            <Text style={styles.fareSplitLabel}>Split Between</Text>
-            <Text style={styles.fareSplitValue}>
-              {passengers.length} passenger{passengers.length !== 1 ? 's' : ''}
+            <Text style={styles.fareSplitLabel}>Your Share</Text>
+            <Text style={styles.fareSplitValuePrimary}>
+              {formatCurrency(
+                item.myShare ||
+                  (passengers.length > 0
+                    ? totalFare / passengers.length
+                    : totalFare)
+              )}
             </Text>
           </View>
-          <View style={styles.fareSplitDivider} />
-          <View style={styles.fareSplitRow}>
-            <Text style={styles.fareSplitLabelBold}>Your Share</Text>
-            <Text style={styles.fareSplitValueBold}>
-              {formatCurrency(farePerPerson)}
-            </Text>
-          </View>
-        </View>
-
-        {/* Status */}
-        <View style={styles.rideStatusContainer}>
-          <View
-            style={[
-              styles.statusBadge,
-              item.status === 'in_progress' && styles.statusBadgeActive,
-              item.status === 'completed' && styles.statusBadgeCompleted,
-            ]}
-          >
-            <Text
-              style={[
-                styles.statusBadgeText,
-                item.status === 'in_progress' && styles.statusBadgeTextActive,
-                item.status === 'completed' && styles.statusBadgeTextCompleted,
-              ]}
-            >
-              {item.status === 'in_progress'
-                ? 'In Progress'
-                : item.status === 'completed'
-                ? 'Completed'
-                : item.status
-                  ? item.status.charAt(0).toUpperCase() + item.status.slice(1)
-                  : 'Active'}
-            </Text>
-          </View>
+          {item.savings > 0 && (
+            <View style={styles.fareSplitRow}>
+              <Text style={styles.fareSplitLabel}>You Saved</Text>
+              <Text style={styles.fareSplitValueSavings}>
+                {formatCurrency(item.savings)}
+              </Text>
+            </View>
+          )}
         </View>
       </View>
     );
@@ -278,7 +269,7 @@ const RideSharingScreen = ({ navigation }) => {
     <View style={styles.tabContent}>
       {/* Search Form */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Search for Shared Rides</Text>
+        <Text style={styles.sectionTitle}>Search Route</Text>
         <View style={styles.card}>
           <View style={styles.inputRow}>
             <View style={[styles.locationDot, styles.pickupDot]} />
@@ -290,7 +281,7 @@ const RideSharingScreen = ({ navigation }) => {
               onChangeText={setPickupAddress}
             />
           </View>
-          <View style={styles.inputDivider} />
+          <View style={styles.divider} />
           <View style={styles.inputRow}>
             <View style={[styles.locationDot, styles.dropoffDot]} />
             <TextInput
@@ -313,24 +304,70 @@ const RideSharingScreen = ({ navigation }) => {
           {isSearching ? (
             <ActivityIndicator color={COLORS.textOnPrimary} />
           ) : (
-            <Text style={styles.searchButtonText}>Search Rides</Text>
+            <Text style={styles.searchButtonText}>Search Shared Rides</Text>
           )}
         </TouchableOpacity>
       </View>
 
-      {/* Search Results */}
+      {/* Results */}
       {searchResults.length > 0 && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>
             Available Rides ({searchResults.length})
           </Text>
+          {searchResults.map((ride, index) => (
+            <View key={ride.id || ride._id || index}>
+              {renderSearchResult({ item: ride })}
+            </View>
+          ))}
         </View>
       )}
     </View>
   );
 
+  const renderMyTab = () => {
+    if (isLoadingMyRides) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={styles.loadingText}>Loading your shared rides...</Text>
+        </View>
+      );
+    }
+
+    if (mySharedRides.length === 0) {
+      return (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No shared rides yet</Text>
+          <Text style={styles.emptySubtext}>
+            Search and join a shared ride to get started
+          </Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.tabContent}>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>
+            My Shared Rides ({mySharedRides.length})
+          </Text>
+          {mySharedRides.map((ride, index) => (
+            <View key={ride.id || ride._id || index}>
+              {renderMyRide({ item: ride })}
+            </View>
+          ))}
+        </View>
+      </View>
+    );
+  };
+
   return (
-    <View style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
       {/* Tab Selector */}
       <View style={styles.tabBar}>
         {TABS.map((tab) => (
@@ -354,51 +391,8 @@ const RideSharingScreen = ({ navigation }) => {
         ))}
       </View>
 
-      {activeTab === 'find' ? (
-        <FlatList
-          ListHeaderComponent={renderFindTab}
-          data={searchResults}
-          renderItem={renderSearchResult}
-          keyExtractor={(item, index) =>
-            item.id || item._id || `result-${index}`
-          }
-          contentContainerStyle={styles.listContent}
-          ListEmptyComponent={
-            !isSearching && searchResults.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyStateText}>
-                  Search for shared rides near you
-                </Text>
-                <Text style={styles.emptyStateSubtext}>
-                  Enter your pickup and dropoff to find compatible rides
-                </Text>
-              </View>
-            ) : null
-          }
-        />
-      ) : (
-        <FlatList
-          data={mySharedRides}
-          renderItem={renderMySharedRide}
-          keyExtractor={(item, index) =>
-            item.id || item._id || `my-${index}`
-          }
-          contentContainerStyle={styles.listContent}
-          refreshing={isLoadingMyRides}
-          onRefresh={loadMySharedRides}
-          ListEmptyComponent={
-            !isLoadingMyRides ? (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyStateText}>No shared rides yet</Text>
-                <Text style={styles.emptyStateSubtext}>
-                  Join a shared ride to save on fares
-                </Text>
-              </View>
-            ) : null
-          }
-        />
-      )}
-    </View>
+      {activeTab === 'find' ? renderFindTab() : renderMyTab()}
+    </ScrollView>
   );
 };
 
@@ -407,33 +401,41 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  content: {
+    paddingBottom: 40,
+  },
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    marginHorizontal: 16,
+    marginTop: 16,
+    backgroundColor: COLORS.surfaceVariant,
+    borderRadius: 12,
+    padding: 4,
   },
   tab: {
     flex: 1,
-    paddingVertical: 14,
+    paddingVertical: 12,
     alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
+    borderRadius: 10,
   },
   tabActive: {
-    borderBottomColor: COLORS.primary,
+    backgroundColor: COLORS.surface,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   tabText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: COLORS.textSecondary,
   },
   tabTextActive: {
     color: COLORS.primary,
   },
-  tabContent: {},
-  listContent: {
-    paddingBottom: 40,
+  tabContent: {
+    flex: 1,
   },
   section: {
     paddingHorizontal: 16,
@@ -475,7 +477,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: COLORS.text,
   },
-  inputDivider: {
+  divider: {
     height: 1,
     backgroundColor: COLORS.surfaceVariant,
     marginLeft: 38,
@@ -497,17 +499,21 @@ const styles = StyleSheet.create({
   rideCard: {
     backgroundColor: COLORS.surface,
     borderRadius: 12,
-    marginHorizontal: 16,
-    marginTop: 12,
     padding: 16,
+    marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 1,
+  },
+  rideCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
   },
   routeContainer: {
-    marginBottom: 12,
+    flex: 1,
   },
   routeRow: {
     flexDirection: 'row',
@@ -539,13 +545,13 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     flex: 1,
   },
-  rideDetails: {
+  rideCardDetails: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: COLORS.surfaceVariant,
+    marginBottom: 12,
   },
   detailItem: {
     alignItems: 'center',
@@ -553,7 +559,7 @@ const styles = StyleSheet.create({
   detailLabel: {
     fontSize: 11,
     color: COLORS.textSecondary,
-    marginBottom: 2,
+    marginBottom: 4,
   },
   detailValue: {
     fontSize: 15,
@@ -565,12 +571,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.primary,
   },
-  savingsValue: {
+  detailValueSavings: {
     fontSize: 15,
     fontWeight: '700',
     color: COLORS.success,
   },
-  departureText: {
+  departureTime: {
     fontSize: 12,
     color: COLORS.textSecondary,
     marginBottom: 12,
@@ -583,14 +589,39 @@ const styles = StyleSheet.create({
   },
   joinButtonText: {
     color: COLORS.textOnPrimary,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
   },
+  statusBadge: {
+    backgroundColor: COLORS.warningLight,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    alignSelf: 'flex-start',
+    marginLeft: 8,
+  },
+  statusBadgeActive: {
+    backgroundColor: COLORS.successLight,
+  },
+  statusBadgeCompleted: {
+    backgroundColor: COLORS.infoLight,
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.warning,
+  },
+  statusBadgeTextActive: {
+    color: COLORS.success,
+  },
+  statusBadgeTextCompleted: {
+    color: COLORS.info,
+  },
   participantsSection: {
-    marginBottom: 12,
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: COLORS.surfaceVariant,
+    marginBottom: 12,
   },
   participantsTitle: {
     fontSize: 13,
@@ -601,7 +632,7 @@ const styles = StyleSheet.create({
   participantRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    paddingVertical: 6,
   },
   participantAvatar: {
     width: 32,
@@ -618,104 +649,67 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   participantName: {
+    flex: 1,
     fontSize: 14,
     color: COLORS.text,
-    flex: 1,
   },
-  youBadge: {
-    backgroundColor: COLORS.successLight,
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  youBadgeText: {
-    fontSize: 11,
+  participantFare: {
+    fontSize: 14,
     fontWeight: '600',
     color: COLORS.primary,
   },
   fareSplitSection: {
-    backgroundColor: COLORS.surfaceVariant,
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 12,
-  },
-  fareSplitTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
-    marginBottom: 8,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.surfaceVariant,
   },
   fareSplitRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    paddingVertical: 4,
   },
   fareSplitLabel: {
-    fontSize: 13,
+    fontSize: 14,
     color: COLORS.textSecondary,
   },
   fareSplitValue: {
-    fontSize: 13,
-    color: COLORS.text,
-  },
-  fareSplitDivider: {
-    height: 1,
-    backgroundColor: COLORS.border,
-    marginVertical: 6,
-  },
-  fareSplitLabelBold: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
     color: COLORS.text,
   },
-  fareSplitValueBold: {
+  fareSplitValuePrimary: {
     fontSize: 16,
     fontWeight: '700',
     color: COLORS.primary,
   },
-  rideStatusContainer: {
-    alignItems: 'flex-start',
-  },
-  statusBadge: {
-    backgroundColor: COLORS.successLight,
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  statusBadgeActive: {
-    backgroundColor: COLORS.infoLight,
-  },
-  statusBadgeCompleted: {
-    backgroundColor: COLORS.surfaceVariant,
-  },
-  statusBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
+  fareSplitValueSavings: {
+    fontSize: 14,
+    fontWeight: '700',
     color: COLORS.success,
   },
-  statusBadgeTextActive: {
-    color: COLORS.info,
-  },
-  statusBadgeTextCompleted: {
-    color: COLORS.textSecondary,
-  },
-  emptyState: {
+  loadingContainer: {
     alignItems: 'center',
     paddingVertical: 48,
-    paddingHorizontal: 32,
   },
-  emptyStateText: {
+  loadingText: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginTop: 12,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 48,
+  },
+  emptyText: {
     fontSize: 16,
     fontWeight: '600',
     color: COLORS.textSecondary,
-    textAlign: 'center',
   },
-  emptyStateSubtext: {
-    fontSize: 14,
+  emptySubtext: {
+    fontSize: 13,
     color: COLORS.textLight,
     marginTop: 4,
-    textAlign: 'center',
   },
 });
 

@@ -13,6 +13,7 @@ import {
 import { COLORS } from '../../utils/constants';
 import { formatDate } from '../../utils/formatters';
 import useChatStore from '../../store/chatStore';
+import useAuthStore from '../../store/authStore';
 import { getSocket } from '../../services/socket';
 
 const ChatScreen = ({ route }) => {
@@ -21,6 +22,9 @@ const ChatScreen = ({ route }) => {
   const [isLoading, setIsLoading] = useState(true);
   const flatListRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+
+  const { user } = useAuthStore();
+  const currentUserId = user?.id || user?._id;
 
   const {
     messages,
@@ -52,6 +56,12 @@ const ChatScreen = ({ route }) => {
   useEffect(() => {
     if (unreadCount > 0) {
       markAsRead(rideId);
+
+      // Emit read event via socket
+      const socket = getSocket();
+      if (socket) {
+        socket.emit('chat:read', { rideId });
+      }
     }
   }, [rideMessages.length]);
 
@@ -72,6 +82,7 @@ const ChatScreen = ({ route }) => {
 
     socket.on('chat:message', handleIncomingMessage);
     socket.on('chat:typing', handleTypingEvent);
+    socket.on('chat:read', handleReadEvent);
   };
 
   const cleanupSocketListeners = () => {
@@ -80,26 +91,45 @@ const ChatScreen = ({ route }) => {
 
     socket.off('chat:message', handleIncomingMessage);
     socket.off('chat:typing', handleTypingEvent);
+    socket.off('chat:read', handleReadEvent);
   };
 
-  const handleIncomingMessage = useCallback((data) => {
-    if (data.rideId === rideId) {
-      addMessage(rideId, data);
-    }
-  }, [rideId]);
-
-  const handleTypingEvent = useCallback((data) => {
-    if (data.rideId === rideId) {
-      setTyping(rideId, true);
-      // Clear typing indicator after 3 seconds
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
+  const handleIncomingMessage = useCallback(
+    (data) => {
+      if (data.rideId === rideId) {
+        addMessage(rideId, data.message || data);
       }
-      typingTimeoutRef.current = setTimeout(() => {
-        setTyping(rideId, false);
-      }, 3000);
-    }
-  }, [rideId]);
+    },
+    [rideId]
+  );
+
+  const handleTypingEvent = useCallback(
+    (data) => {
+      if (data.rideId === rideId) {
+        setTyping(rideId, data.isTyping !== undefined ? data.isTyping : true);
+
+        // Clear typing indicator after 3 seconds if no explicit stop
+        if (data.isTyping !== false) {
+          if (typingTimeoutRef.current) {
+            clearTimeout(typingTimeoutRef.current);
+          }
+          typingTimeoutRef.current = setTimeout(() => {
+            setTyping(rideId, false);
+          }, 3000);
+        }
+      }
+    },
+    [rideId]
+  );
+
+  const handleReadEvent = useCallback(
+    (data) => {
+      if (data.rideId === rideId) {
+        markAsRead(rideId);
+      }
+    },
+    [rideId]
+  );
 
   const handleSend = () => {
     const trimmed = inputText.trim();
@@ -111,12 +141,22 @@ const ChatScreen = ({ route }) => {
     const optimisticMessage = {
       id: `temp-${Date.now()}`,
       text: trimmed,
-      sender: 'me',
+      sender: currentUserId || 'me',
+      senderId: currentUserId,
+      senderName: user?.firstName || 'You',
       timestamp: new Date().toISOString(),
       isMine: true,
+      isRead: false,
+      isSystem: false,
     };
     addMessage(rideId, optimisticMessage);
     setInputText('');
+
+    // Stop typing indicator
+    const socket = getSocket();
+    if (socket) {
+      socket.emit('chat:typing', { rideId, isTyping: false });
+    }
   };
 
   const handleTextChange = (text) => {
@@ -124,12 +164,37 @@ const ChatScreen = ({ route }) => {
 
     const socket = getSocket();
     if (socket && text.length > 0) {
-      socket.emit('chat:typing', { rideId });
+      socket.emit('chat:typing', { rideId, isTyping: true });
     }
   };
 
+  const formatMessageTime = (timestamp) => {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
+  };
+
   const renderMessage = ({ item }) => {
-    const isMine = item.isMine || item.sender === 'me';
+    const isSystem = item.isSystem || item.type === 'system';
+    const isMine =
+      item.isMine ||
+      item.sender === 'me' ||
+      item.senderId === currentUserId ||
+      item.sender === currentUserId;
+
+    // System messages are centered and styled differently
+    if (isSystem) {
+      return (
+        <View style={styles.systemMessageContainer}>
+          <Text style={styles.systemMessageText}>
+            {item.text || item.message || item.content}
+          </Text>
+        </View>
+      );
+    }
+
     return (
       <View
         style={[
@@ -143,6 +208,12 @@ const ChatScreen = ({ route }) => {
             isMine ? styles.myMessageBubble : styles.theirMessageBubble,
           ]}
         >
+          {/* Sender name for other user's messages */}
+          {!isMine && (
+            <Text style={styles.senderName}>
+              {item.senderName || otherUserName || 'Unknown'}
+            </Text>
+          )}
           <Text
             style={[
               styles.messageText,
@@ -151,14 +222,27 @@ const ChatScreen = ({ route }) => {
           >
             {item.text || item.message || item.content}
           </Text>
-          <Text
-            style={[
-              styles.messageTime,
-              isMine ? styles.myMessageTime : styles.theirMessageTime,
-            ]}
-          >
-            {formatDate(item.timestamp || item.createdAt)}
-          </Text>
+          <View style={styles.messageFooter}>
+            <Text
+              style={[
+                styles.messageTime,
+                isMine ? styles.myMessageTime : styles.theirMessageTime,
+              ]}
+            >
+              {formatMessageTime(item.timestamp || item.createdAt)}
+            </Text>
+            {/* Read status for own messages */}
+            {isMine && (
+              <Text
+                style={[
+                  styles.readStatus,
+                  item.isRead && styles.readStatusRead,
+                ]}
+              >
+                {item.isRead ? '\u2713\u2713' : '\u2713'}
+              </Text>
+            )}
+          </View>
         </View>
       </View>
     );
@@ -169,7 +253,14 @@ const ChatScreen = ({ route }) => {
     return (
       <View style={styles.typingContainer}>
         <View style={styles.typingBubble}>
-          <Text style={styles.typingText}>{otherUserName} is typing...</Text>
+          <Text style={styles.typingText}>
+            {otherUserName || 'Someone'} is typing
+          </Text>
+          <View style={styles.typingDots}>
+            <View style={[styles.typingDot, styles.typingDot1]} />
+            <View style={[styles.typingDot, styles.typingDot2]} />
+            <View style={[styles.typingDot, styles.typingDot3]} />
+          </View>
         </View>
       </View>
     );
@@ -221,6 +312,7 @@ const ChatScreen = ({ route }) => {
         contentContainerStyle={styles.messagesList}
         ListEmptyComponent={renderEmptyState}
         ListHeaderComponent={renderTypingIndicator}
+        showsVerticalScrollIndicator={false}
         onContentSizeChange={() => {
           if (rideMessages.length > 0) {
             flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
@@ -308,8 +400,16 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 4,
   },
   theirMessageBubble: {
-    backgroundColor: COLORS.surfaceVariant,
+    backgroundColor: COLORS.surface,
     borderBottomLeftRadius: 4,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  senderName: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.primaryDark,
+    marginBottom: 2,
   },
   messageText: {
     fontSize: 15,
@@ -321,9 +421,14 @@ const styles = StyleSheet.create({
   theirMessageText: {
     color: COLORS.text,
   },
+  messageFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginTop: 4,
+  },
   messageTime: {
     fontSize: 11,
-    marginTop: 4,
   },
   myMessageTime: {
     color: 'rgba(255, 255, 255, 0.7)',
@@ -332,11 +437,37 @@ const styles = StyleSheet.create({
   theirMessageTime: {
     color: COLORS.textSecondary,
   },
+  readStatus: {
+    fontSize: 12,
+    marginLeft: 4,
+    color: 'rgba(255, 255, 255, 0.5)',
+  },
+  readStatusRead: {
+    color: 'rgba(255, 255, 255, 0.9)',
+  },
+  systemMessageContainer: {
+    alignItems: 'center',
+    marginVertical: 8,
+    paddingHorizontal: 20,
+  },
+  systemMessageText: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    backgroundColor: COLORS.surfaceVariant,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    overflow: 'hidden',
+  },
   typingContainer: {
     alignSelf: 'flex-start',
     marginVertical: 4,
   },
   typingBubble: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: COLORS.surfaceVariant,
     borderRadius: 16,
     borderBottomLeftRadius: 4,
@@ -347,6 +478,27 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.textSecondary,
     fontStyle: 'italic',
+    marginRight: 6,
+  },
+  typingDots: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  typingDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: COLORS.textSecondary,
+    marginHorizontal: 1,
+  },
+  typingDot1: {
+    opacity: 0.4,
+  },
+  typingDot2: {
+    opacity: 0.6,
+  },
+  typingDot3: {
+    opacity: 0.8,
   },
   emptyContainer: {
     flex: 1,
