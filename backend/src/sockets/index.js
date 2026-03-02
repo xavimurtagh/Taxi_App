@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import env from '../config/env.js';
 import { registerRideEvents } from './rideEvents.js';
 import { registerLocationEvents } from './locationEvents.js';
+import { registerChatEvents } from './chatEvents.js';
 
 /**
  * The global Socket.IO server instance.
@@ -86,6 +87,7 @@ export function setupSockets(httpServer) {
     // Register domain-specific event handlers
     registerRideEvents(io, socket);
     registerLocationEvents(io, socket);
+    registerChatEvents(socket, io);
 
     // Handle disconnection
     socket.on('disconnect', (reason) => {
