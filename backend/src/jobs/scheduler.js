@@ -3,6 +3,8 @@ import { query } from '../config/database.js';
 import { finalizeExpiredProposals } from '../services/governance.js';
 import { expireModeratorTerms } from '../services/moderation.js';
 import { executeAllPending } from '../services/proposalExecution.js';
+import { dispatchScheduledRide, sendReminders, expireOldScheduledRides } from '../services/scheduling.js';
+import { checkAndQualifyReferral } from '../services/referrals.js';
 
 /**
  * Start all scheduled background jobs
@@ -150,6 +152,102 @@ export function startScheduler() {
       }
     } catch (error) {
       console.error('[Scheduler] Moderator term expiry check failed:', error.message);
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // Phase 3: Dispatch scheduled rides approaching their time (every 5 min)
+  // -------------------------------------------------------------------------
+  cron.schedule('*/5 * * * *', async () => {
+    try {
+      // Find scheduled rides within the next 15 minutes that are still pending
+      const result = await query(
+        `SELECT id
+         FROM scheduled_rides
+         WHERE status IN ('scheduled', 'reminder_sent')
+           AND scheduled_time <= NOW() + INTERVAL '15 minutes'
+           AND scheduled_time > NOW()
+         ORDER BY scheduled_time ASC`
+      );
+
+      if (result.rows.length > 0) {
+        console.log(`[Scheduler] Dispatching ${result.rows.length} upcoming scheduled ride(s)`);
+      }
+
+      for (const row of result.rows) {
+        try {
+          await dispatchScheduledRide(row.id);
+          console.log(`[Scheduler] Dispatched scheduled ride ${row.id}`);
+        } catch (err) {
+          console.error(`[Scheduler] Failed to dispatch scheduled ride ${row.id}:`, err.message);
+        }
+      }
+    } catch (error) {
+      console.error('[Scheduler] Scheduled ride dispatch failed:', error.message);
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // Phase 3: Send reminders for rides within 30 minutes (every 10 min)
+  // -------------------------------------------------------------------------
+  cron.schedule('*/10 * * * *', async () => {
+    try {
+      const count = await sendReminders();
+      if (count > 0) {
+        console.log(`[Scheduler] Sent ${count} scheduled ride reminder(s)`);
+      }
+    } catch (error) {
+      console.error('[Scheduler] Scheduled ride reminders failed:', error.message);
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // Phase 3: Expire old unmatched scheduled rides (daily at 2am)
+  // -------------------------------------------------------------------------
+  cron.schedule('0 2 * * *', async () => {
+    try {
+      const count = await expireOldScheduledRides();
+      if (count > 0) {
+        console.log(`[Scheduler] Expired ${count} stale scheduled ride(s)`);
+      }
+    } catch (error) {
+      console.error('[Scheduler] Scheduled ride expiry failed:', error.message);
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // Phase 3: Check referral qualifying rides and issue rewards (daily at 2am)
+  // -------------------------------------------------------------------------
+  cron.schedule('0 2 * * *', async () => {
+    try {
+      // Find rides completed in the last 24 hours by referred users
+      const recentRides = await query(
+        `SELECT DISTINCT r.passenger_id
+         FROM rides r
+         JOIN referrals ref ON ref.referred_id = r.passenger_id
+         WHERE r.status = 'completed'
+           AND r.dropoff_at >= NOW() - INTERVAL '24 hours'
+           AND ref.status = 'pending'`
+      );
+
+      let qualifiedCount = 0;
+
+      for (const row of recentRides.rows) {
+        try {
+          const result = await checkAndQualifyReferral(row.passenger_id);
+          if (result) {
+            qualifiedCount++;
+          }
+        } catch (err) {
+          console.error(`[Scheduler] Referral qualification check failed for user ${row.passenger_id}:`, err.message);
+        }
+      }
+
+      if (qualifiedCount > 0) {
+        console.log(`[Scheduler] Qualified ${qualifiedCount} referral(s) and issued rewards`);
+      }
+    } catch (error) {
+      console.error('[Scheduler] Referral qualification check failed:', error.message);
     }
   });
 

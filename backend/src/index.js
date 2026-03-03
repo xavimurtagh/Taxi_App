@@ -100,6 +100,7 @@ async function mountRoutes() {
     { path: '/ridesharing', module: './routes/ridesharing.js' },
     { path: '/referrals', module: './routes/referrals.js' },
     { path: '/vehicle-types', module: './routes/vehicleTypes.js' },
+    { path: '/accessibility', module: './routes/accessibility.js' },
   ];
 
   for (const route of routeModules) {

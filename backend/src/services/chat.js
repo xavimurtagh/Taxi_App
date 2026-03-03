@@ -147,3 +147,70 @@ export async function getUnreadCount(rideId, userId) {
 
   return result.rows[0].count;
 }
+
+/**
+ * Get the total count of unread messages across all active rides for a
+ * given user.
+ *
+ * "Active" rides are those with a status that is not 'completed' or
+ * 'cancelled'. Only messages sent by *other* users are counted.
+ *
+ * @param {string} userId - The user to count unread for
+ * @returns {Promise<number>}
+ */
+export async function getUnreadCountForUser(userId) {
+  const result = await query(
+    `SELECT COUNT(*)::int AS count
+     FROM chat_messages cm
+     JOIN rides r ON r.id = cm.ride_id
+     WHERE (r.passenger_id = $1 OR r.driver_id = $1)
+       AND r.status NOT IN ('completed', 'cancelled')
+       AND cm.sender_id != $1
+       AND cm.is_read = false`,
+    [userId]
+  );
+
+  return result.rows[0].count;
+}
+
+/**
+ * Send a system-generated message in a ride conversation.
+ *
+ * System messages have no sender (stored as NULL) and are used for
+ * automated status updates like "Driver is arriving" or "Ride started".
+ *
+ * @param {string} rideId  - The ride to send the message in
+ * @param {string} message - The system message text
+ * @returns {Promise<object>} The saved message row
+ */
+export async function sendSystemMessage(rideId, message) {
+  const result = await query(
+    `INSERT INTO chat_messages (ride_id, sender_id, message, message_type, metadata)
+     VALUES ($1, NULL, $2, 'system', '{}')
+     RETURNING id, ride_id, sender_id, message, message_type, metadata,
+               is_read, created_at`,
+    [rideId, message]
+  );
+
+  const chatMessage = result.rows[0];
+
+  // Emit the system message to all participants in the ride room
+  try {
+    const io = getIO();
+    if (io) {
+      io.to(`ride:${rideId}`).emit('chat:message', {
+        id: chatMessage.id,
+        rideId: chatMessage.ride_id,
+        senderId: null,
+        message: chatMessage.message,
+        messageType: 'system',
+        metadata: chatMessage.metadata,
+        createdAt: chatMessage.created_at,
+      });
+    }
+  } catch (error) {
+    console.error('[chat] Failed to emit system message via socket:', error.message);
+  }
+
+  return chatMessage;
+}

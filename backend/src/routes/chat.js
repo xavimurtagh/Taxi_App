@@ -8,6 +8,7 @@ import {
   getMessages,
   markAsRead,
   getUnreadCount,
+  getUnreadCountForUser,
 } from '../services/chat.js';
 
 const router = Router();
@@ -68,6 +69,26 @@ async function verifyRideParticipant(rideId, userId, res) {
 
   return ride;
 }
+
+// ---------------------------------------------------------------------------
+// GET /unread-count — Get total unread message count across all active rides
+// ---------------------------------------------------------------------------
+router.get('/unread-count', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const count = await getUnreadCountForUser(userId);
+
+    return res.status(200).json({
+      unreadCount: count,
+    });
+  } catch (err) {
+    console.error('[chat] GET /unread-count error:', err);
+    return res.status(500).json({
+      error: 'Internal server error',
+      message: 'An unexpected error occurred while fetching unread count',
+    });
+  }
+});
 
 // ---------------------------------------------------------------------------
 // GET /:rideId/messages — Get chat messages for a ride
