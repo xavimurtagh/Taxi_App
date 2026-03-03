@@ -15,6 +15,10 @@ import ElectionScreen from '../screens/governance/ElectionScreen';
 import ProfileScreen from '../screens/shared/ProfileScreen';
 import SettingsScreen from '../screens/shared/SettingsScreen';
 import TransparencyScreen from '../screens/shared/TransparencyScreen';
+import ChatScreen from '../screens/shared/ChatScreen';
+import ReferralScreen from '../screens/shared/ReferralScreen';
+import ScheduleRideScreen from '../screens/passenger/ScheduleRideScreen';
+import RideSharingScreen from '../screens/passenger/RideSharingScreen';
 
 const Tab = createBottomTabNavigator();
 const HomeStack = createNativeStackNavigator();
@@ -56,6 +60,21 @@ const HomeStackScreen = () => (
       name="PassengerRating"
       component={RatingScreen}
       options={{ title: 'Rate Your Ride' }}
+    />
+    <HomeStack.Screen
+      name="Chat"
+      component={ChatScreen}
+      options={{ title: 'Chat' }}
+    />
+    <HomeStack.Screen
+      name="ScheduleRide"
+      component={ScheduleRideScreen}
+      options={{ title: 'Schedule a Ride' }}
+    />
+    <HomeStack.Screen
+      name="RideSharing"
+      component={RideSharingScreen}
+      options={{ title: 'Ride Sharing' }}
     />
   </HomeStack.Navigator>
 );
