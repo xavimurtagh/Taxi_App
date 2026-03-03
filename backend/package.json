@@ -27,6 +27,8 @@
     "node-cron": "^3.0.3",
     "pg": "^8.11.3",
     "socket.io": "^4.7.4",
+    "@sentry/node": "^7.100.0",
+    "prom-client": "^15.1.0",
     "stripe": "^14.14.0",
     "twilio": "^4.21.0",
     "uuid": "^9.0.0"

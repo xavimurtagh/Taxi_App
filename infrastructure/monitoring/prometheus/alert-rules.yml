@@ -1,0 +1,154 @@
+groups:
+  # ---------------------------------------------------------------------------
+  # API Health
+  # ---------------------------------------------------------------------------
+  - name: api_health
+    rules:
+      - alert: HighErrorRate
+        expr: >
+          (
+            sum(rate(http_requests_total{status_code=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High 5xx error rate detected"
+          description: >
+            The 5xx error rate is {{ $value | humanizePercentage }} over the
+            last 5 minutes (threshold: 5%).
+
+      - alert: HighLatency
+        expr: >
+          histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High p95 latency detected"
+          description: >
+            p95 request latency is {{ $value | humanizeDuration }} over the
+            last 5 minutes (threshold: 2s).
+
+      - alert: ServiceDown
+        expr: up{job="openride-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "OpenRide API service is down"
+          description: >
+            The OpenRide API health check has been failing for more than 1 minute.
+
+  # ---------------------------------------------------------------------------
+  # Infrastructure
+  # ---------------------------------------------------------------------------
+  - name: infrastructure
+    rules:
+      - alert: HighMemoryUsage
+        expr: >
+          (
+            openride_process_resident_memory_bytes{service="openride-api"}
+            /
+            (node_memory_MemTotal_bytes or vector(2147483648))
+          ) > 0.9
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage on OpenRide API"
+          description: >
+            Process memory usage is above 90% for more than 10 minutes.
+
+      - alert: DatabaseConnectionPoolExhausted
+        expr: >
+          (
+            pg_stat_activity_count{datname="openride"}
+            /
+            pg_settings_max_connections
+          ) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Database connection pool nearing exhaustion"
+          description: >
+            PostgreSQL connection utilisation is above 80%
+            ({{ $value | humanizePercentage }}).
+
+      - alert: RedisDown
+        expr: redis_up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis is down"
+          description: >
+            Redis health check has been failing for more than 1 minute.
+
+      - alert: DiskSpaceLow
+        expr: >
+          (
+            node_filesystem_avail_bytes{mountpoint="/"}
+            /
+            node_filesystem_size_bytes{mountpoint="/"}
+          ) < 0.1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low disk space"
+          description: >
+            Less than 10% disk space remaining on the root filesystem.
+
+  # ---------------------------------------------------------------------------
+  # Business Metrics
+  # ---------------------------------------------------------------------------
+  - name: business_metrics
+    rules:
+      - alert: NoActiveDrivers
+        expr: >
+          (
+            count(active_connections) == 0
+            or
+            active_connections == 0
+          )
+          and ON() (hour() >= 6 and hour() <= 23)
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "No active drivers during business hours"
+          description: >
+            There are zero active driver connections during business hours
+            (06:00-23:00 UTC). This may indicate a connectivity issue.
+
+      - alert: PaymentFailureSpike
+        expr: >
+          (
+            sum(rate(payment_transactions_total{status="failure"}[5m]))
+            /
+            sum(rate(payment_transactions_total[5m]))
+          ) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High payment failure rate"
+          description: >
+            Payment failure rate is {{ $value | humanizePercentage }} over the
+            last 5 minutes (threshold: 10%).
+
+      - alert: RideMatchingDegraded
+        expr: >
+          histogram_quantile(0.50, sum(rate(driver_matching_duration_seconds_bucket[5m])) by (le)) > 30
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Ride matching is degraded"
+          description: >
+            Average driver matching time is {{ $value | humanizeDuration }}
+            (threshold: 30s). Riders may be experiencing long wait times.

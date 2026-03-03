@@ -9,10 +9,43 @@ import redis from './config/redis.js';
 import { generalLimiter } from './middleware/rateLimit.js';
 import { setupSockets } from './sockets/index.js';
 
+// Monitoring & observability imports
+import { initSentry, sentryRequestHandler, sentryTracingHandler, sentryErrorHandler } from './utils/sentry.js';
+import logger from './utils/logger.js';
+import { requestIdMiddleware } from './middleware/requestId.js';
+import { metricsMiddleware, metricsEndpoint } from './middleware/metrics.js';
+import healthCheckRouter from './middleware/healthCheck.js';
+
+// ---------------------------------------------------------------------------
+// Initialise Sentry (must happen before Express app is created)
+// ---------------------------------------------------------------------------
+initSentry();
+
 // ---------------------------------------------------------------------------
 // Express application
 // ---------------------------------------------------------------------------
 const app = express();
+
+// ---------------------------------------------------------------------------
+// Sentry request handler — must be the very first middleware
+// ---------------------------------------------------------------------------
+app.use(sentryRequestHandler());
+app.use(sentryTracingHandler());
+
+// ---------------------------------------------------------------------------
+// Request ID — attach a unique ID to every request
+// ---------------------------------------------------------------------------
+app.use(requestIdMiddleware);
+
+// ---------------------------------------------------------------------------
+// Prometheus metrics collection middleware (before routes, after requestId)
+// ---------------------------------------------------------------------------
+app.use(metricsMiddleware);
+
+// ---------------------------------------------------------------------------
+// Prometheus /metrics endpoint — mounted OUTSIDE the rate limiter
+// ---------------------------------------------------------------------------
+app.get('/metrics', metricsEndpoint);
 
 // ---------------------------------------------------------------------------
 // Global middleware
@@ -47,28 +80,9 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(generalLimiter);
 
 // ---------------------------------------------------------------------------
-// Health-check (outside the /api/v1 prefix so load-balancers can probe easily)
+// Health-check routes (outside the /api/v1 prefix so load-balancers can probe)
 // ---------------------------------------------------------------------------
-app.get('/health', async (_req, res) => {
-  try {
-    await pool.query('SELECT 1');
-    const redisStatus = redis.status === 'ready' ? 'ok' : redis.status;
-    res.json({
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      services: {
-        database: 'ok',
-        redis: redisStatus,
-      },
-    });
-  } catch (err) {
-    res.status(503).json({
-      status: 'degraded',
-      timestamp: new Date().toISOString(),
-      error: err.message,
-    });
-  }
-});
+app.use('/health', healthCheckRouter);
 
 // ---------------------------------------------------------------------------
 // API routes — mounted under /api/v1
@@ -107,13 +121,13 @@ async function mountRoutes() {
     try {
       const mod = await import(route.module);
       apiRouter.use(route.path, mod.default || mod.router);
-      console.log(`[routes] Mounted ${route.path}`);
+      logger.info(`Mounted route ${route.path}`);
     } catch (err) {
       // Module does not exist yet — skip silently during development
       if (err.code === 'ERR_MODULE_NOT_FOUND') {
-        console.log(`[routes] Skipped ${route.path} (module not found)`);
+        logger.debug(`Skipped route ${route.path} (module not found)`);
       } else {
-        console.error(`[routes] Failed to mount ${route.path}:`, err.message);
+        logger.error(`Failed to mount route ${route.path}`, { error: err });
       }
     }
   }
@@ -130,7 +144,7 @@ function notFoundHandler(_req, res) {
 }
 
 function globalErrorHandler(err, _req, res, _next) {
-  console.error('[error] Unhandled error:', err);
+  logger.error('Unhandled error', { error: err, requestId: _req.id });
 
   const statusCode = err.statusCode || err.status || 500;
   const message =
@@ -153,6 +167,9 @@ async function start() {
   await mountRoutes();
   app.use('/api/v1', apiRouter);
 
+  // Sentry error handler — must come after routes but before our error handler
+  app.use(sentryErrorHandler());
+
   // Catch-all and error handlers (must come after routes)
   app.use(notFoundHandler);
   app.use(globalErrorHandler);
@@ -168,41 +185,39 @@ async function start() {
     const { startScheduler } = await import('./jobs/scheduler.js');
     startScheduler();
   } catch (err) {
-    console.log('[server] Scheduler not started:', err.message);
+    logger.info('Scheduler not started', { reason: err.message });
   }
 
   // Start listening
   httpServer.listen(env.PORT, () => {
-    console.log(
-      `[server] OpenRide API listening on port ${env.PORT} (${env.NODE_ENV})`
-    );
+    logger.info(`OpenRide API listening on port ${env.PORT} (${env.NODE_ENV})`);
   });
 
   // ---------------------------------------------------------------------------
   // Graceful shutdown
   // ---------------------------------------------------------------------------
   const shutdown = async (signal) => {
-    console.log(`\n[server] ${signal} received — shutting down gracefully...`);
+    logger.info(`${signal} received — shutting down gracefully...`);
 
     // Stop accepting new connections
     httpServer.close(() => {
-      console.log('[server] HTTP server closed');
+      logger.info('HTTP server closed');
     });
 
     try {
       // Close database pool
       await pool.end();
-      console.log('[server] PostgreSQL pool closed');
+      logger.info('PostgreSQL pool closed');
     } catch (err) {
-      console.error('[server] Error closing PostgreSQL pool:', err.message);
+      logger.error('Error closing PostgreSQL pool', { error: err });
     }
 
     try {
       // Disconnect Redis
       await redis.quit();
-      console.log('[server] Redis connection closed');
+      logger.info('Redis connection closed');
     } catch (err) {
-      console.error('[server] Error closing Redis connection:', err.message);
+      logger.error('Error closing Redis connection', { error: err });
     }
 
     process.exit(0);
@@ -213,17 +228,17 @@ async function start() {
 
   // Catch unhandled rejections so they don't silently disappear
   process.on('unhandledRejection', (reason) => {
-    console.error('[server] Unhandled promise rejection:', reason);
+    logger.error('Unhandled promise rejection', { reason });
   });
 
   process.on('uncaughtException', (err) => {
-    console.error('[server] Uncaught exception:', err);
+    logger.error('Uncaught exception', { error: err });
     process.exit(1);
   });
 }
 
 start().catch((err) => {
-  console.error('[server] Failed to start:', err);
+  logger.error('Failed to start server', { error: err });
   process.exit(1);
 });
 
