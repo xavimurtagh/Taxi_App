@@ -1,7 +1,7 @@
 import '../globals.css';
 
 const navItems = [
-  { href: '/',              label: 'Dashboard',     icon: '\u25A3', section: 'public' },
+  { href: '/dashboard',     label: 'Dashboard',     icon: '\u25A3', section: 'public' },
   { href: '/transparency',  label: 'Transparency',  icon: '\u25C8', section: 'public' },
   { href: '/governance',    label: 'Governance',    icon: '\u2691', section: 'public' },
   { href: '/vehicles',      label: 'Vehicles',      icon: '\u25CE', section: 'public' },

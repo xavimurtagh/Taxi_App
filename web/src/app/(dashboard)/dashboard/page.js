@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { fetchAPI, formatNumber, formatCurrency } from '../../lib/api';
+import { fetchAPI, formatNumber, formatCurrency } from '../../../lib/api';
 
 export default function DashboardPage() {
   const [summary, setSummary] = useState(null);
