@@ -7,6 +7,7 @@ import env from './config/env.js';
 import pool from './config/database.js';
 import redis from './config/redis.js';
 import { generalLimiter } from './middleware/rateLimit.js';
+import { applySecurityMiddleware, corsOriginValidator } from './middleware/security.js';
 import { setupSockets } from './sockets/index.js';
 
 // Monitoring & observability imports
@@ -54,14 +55,12 @@ app.get('/metrics', metricsEndpoint);
 // Security headers
 app.use(helmet());
 
-// CORS
+// CORS — uses security middleware's origin validator in production
 app.use(
   cors({
-    origin: env.NODE_ENV === 'production'
-      ? process.env.CORS_ORIGIN || 'https://openride.community'
-      : '*',
+    origin: corsOriginValidator(env.NODE_ENV),
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
     credentials: true,
   })
 );
@@ -75,6 +74,10 @@ app.use('/api/v1/payments/webhook', express.raw({ type: 'application/json' }));
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Security hardening middleware (XSS sanitization, SQL injection detection,
+// brute force protection, security headers, per-route body size limits)
+applySecurityMiddleware(app, { nodeEnv: env.NODE_ENV });
 
 // General rate limiting
 app.use(generalLimiter);

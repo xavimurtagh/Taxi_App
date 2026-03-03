@@ -1,0 +1,245 @@
+{
+  "_comment": "Google Play Data Safety Form - OpenRide v1.0.0",
+  "_description": "This file documents all data types collected by OpenRide for the Google Play Store Data Safety section. Use this as a reference when filling out the Data Safety form in the Google Play Console.",
+  "_last_updated": "2026-03-03",
+
+  "data_collection_and_sharing": {
+    "does_app_collect_data": true,
+    "does_app_share_data_with_third_parties": true,
+    "is_data_encrypted_in_transit": true,
+    "can_users_request_data_deletion": true,
+    "deletion_request_url": "https://openride.coop/privacy#user-rights",
+    "privacy_policy_url": "https://openride.coop/privacy"
+  },
+
+  "data_types": {
+    "location": {
+      "approximate_location": {
+        "collected": true,
+        "shared": false,
+        "ephemeral": false,
+        "required": true,
+        "purposes": ["app_functionality"],
+        "description": "Approximate location is used to match riders with nearby drivers and show available rides in the area."
+      },
+      "precise_location": {
+        "collected": true,
+        "shared": false,
+        "ephemeral": false,
+        "required": true,
+        "purposes": ["app_functionality"],
+        "description": "Precise GPS location is collected during active rides only for navigation, fare calculation based on distance, and safety/dispute resolution. Drivers share precise location while online to enable ride matching."
+      }
+    },
+
+    "personal_info": {
+      "name": {
+        "collected": true,
+        "shared": true,
+        "shared_with": ["payment_processor"],
+        "ephemeral": false,
+        "required": true,
+        "purposes": ["app_functionality", "account_management"],
+        "description": "Full name is required for account creation, identity verification, and is shared with Stripe for payment processing."
+      },
+      "email_address": {
+        "collected": true,
+        "shared": true,
+        "shared_with": ["payment_processor"],
+        "ephemeral": false,
+        "required": true,
+        "purposes": ["app_functionality", "account_management"],
+        "description": "Email address is used for account login, notifications, governance participation, and is shared with Stripe for payment processing."
+      },
+      "phone_number": {
+        "collected": true,
+        "shared": true,
+        "shared_with": ["communications_provider"],
+        "ephemeral": false,
+        "required": true,
+        "purposes": ["app_functionality", "account_management"],
+        "description": "Phone number is used for two-factor authentication and is shared with Twilio for ride-related SMS notifications and masked calls between riders and drivers."
+      },
+      "address": {
+        "collected": false,
+        "description": "We do not collect home or work addresses. Pickup and destination addresses are ride-specific and covered under location data."
+      },
+      "user_ids": {
+        "collected": true,
+        "shared": true,
+        "shared_with": ["payment_processor"],
+        "ephemeral": false,
+        "required": true,
+        "purposes": ["app_functionality", "account_management"],
+        "description": "Internal user IDs and Stripe customer IDs are used to manage accounts and process payments."
+      }
+    },
+
+    "financial_info": {
+      "purchase_history": {
+        "collected": true,
+        "shared": false,
+        "ephemeral": false,
+        "required": true,
+        "purposes": ["app_functionality"],
+        "description": "Ride transaction history including fares, dates, and payment status. Retained for receipts, tax records, and dispute resolution."
+      },
+      "payment_info": {
+        "collected": true,
+        "shared": true,
+        "shared_with": ["payment_processor"],
+        "ephemeral": false,
+        "required": true,
+        "purposes": ["app_functionality"],
+        "description": "Payment card details (last 4 digits, type, expiration) are collected for display purposes. Full payment data is processed and stored by Stripe, our PCI-DSS Level 1 compliant payment processor. Bank account details for driver payouts are collected via Stripe Connect."
+      },
+      "credit_score": {
+        "collected": false,
+        "description": "We do not collect credit scores."
+      }
+    },
+
+    "photos_and_videos": {
+      "photos": {
+        "collected": true,
+        "shared": false,
+        "ephemeral": false,
+        "required": false,
+        "purposes": ["app_functionality"],
+        "description": "Profile photos are optionally collected for identity verification during rides. Driver document photos (license, insurance) are collected for verification purposes."
+      },
+      "videos": {
+        "collected": false,
+        "description": "We do not collect video data."
+      }
+    },
+
+    "contacts": {
+      "contacts": {
+        "collected": false,
+        "shared": false,
+        "ephemeral": true,
+        "required": false,
+        "purposes": ["app_functionality"],
+        "description": "Contact access is optional and used only for the referral feature. Contacts are read on-device and never uploaded to our servers."
+      }
+    },
+
+    "app_activity": {
+      "app_interactions": {
+        "collected": false,
+        "description": "We do not track in-app user interactions, screen views, or tap patterns."
+      },
+      "in_app_search_history": {
+        "collected": false,
+        "description": "We do not store search history beyond the current session."
+      },
+      "installed_apps": {
+        "collected": false,
+        "description": "We do not scan or collect information about installed apps."
+      }
+    },
+
+    "device_or_other_ids": {
+      "device_id": {
+        "collected": true,
+        "shared": false,
+        "ephemeral": false,
+        "required": true,
+        "purposes": ["app_functionality"],
+        "description": "Push notification token is collected to send ride-related notifications. Device type and OS version are collected for app compatibility and bug resolution."
+      },
+      "advertising_id": {
+        "collected": false,
+        "description": "We do not collect advertising identifiers. OpenRide does not serve ads and does not participate in ad networks."
+      }
+    },
+
+    "messages": {
+      "other_in_app_messages": {
+        "collected": true,
+        "shared": false,
+        "ephemeral": false,
+        "required": false,
+        "purposes": ["app_functionality"],
+        "description": "In-app messages between riders and drivers during active rides are temporarily stored for safety and dispute resolution purposes. Messages are deleted after 90 days."
+      },
+      "emails": {
+        "collected": false,
+        "description": "We do not read or collect user emails."
+      },
+      "sms_or_mms": {
+        "collected": false,
+        "description": "We do not read or collect SMS/MMS messages."
+      }
+    },
+
+    "identifiers": {
+      "drivers_license": {
+        "collected": true,
+        "shared": true,
+        "shared_with": ["background_check_provider"],
+        "ephemeral": false,
+        "required": true,
+        "applies_to": "drivers_only",
+        "purposes": ["app_functionality", "account_management"],
+        "description": "Driver's license number and photo are collected from driver applicants for identity verification and are shared with our background check provider for motor vehicle record checks."
+      }
+    },
+
+    "health_and_fitness": {
+      "collected": false,
+      "description": "We do not collect any health or fitness data."
+    },
+
+    "audio": {
+      "voice_or_sound_recordings": {
+        "collected": false,
+        "description": "We do not record voice calls. In-app voice calls are facilitated through Twilio but not recorded by OpenRide."
+      }
+    },
+
+    "web_browsing": {
+      "web_browsing_history": {
+        "collected": false,
+        "description": "We do not collect web browsing history."
+      }
+    }
+  },
+
+  "security_practices": {
+    "data_encrypted_in_transit": true,
+    "data_encrypted_at_rest": true,
+    "data_deletion_mechanism": true,
+    "independent_security_review": true,
+    "security_contact": "security@openride.coop"
+  },
+
+  "third_party_services": [
+    {
+      "name": "Stripe",
+      "purpose": "Payment processing",
+      "data_shared": ["name", "email", "payment_info", "user_ids"],
+      "privacy_policy": "https://stripe.com/privacy"
+    },
+    {
+      "name": "Twilio",
+      "purpose": "SMS notifications and masked voice calls",
+      "data_shared": ["phone_number"],
+      "privacy_policy": "https://www.twilio.com/legal/privacy"
+    },
+    {
+      "name": "Background Check Provider",
+      "purpose": "Driver background and motor vehicle record checks",
+      "data_shared": ["name", "date_of_birth", "ssn", "drivers_license"],
+      "applies_to": "driver_applicants_only",
+      "privacy_policy": "[PROVIDER_PRIVACY_POLICY_URL]"
+    },
+    {
+      "name": "Google Maps Platform",
+      "purpose": "Map display, geocoding, and route calculation",
+      "data_shared": ["approximate_location"],
+      "privacy_policy": "https://policies.google.com/privacy"
+    }
+  ]
+}

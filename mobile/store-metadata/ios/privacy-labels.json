@@ -1,0 +1,311 @@
+{
+  "_comment": "Apple App Privacy Nutrition Labels - OpenRide v1.0.0",
+  "_description": "This file documents all data types and usage for the Apple App Store Privacy Labels section (App Privacy 'nutrition label'). Use this as a reference when filling out App Store Connect privacy declarations.",
+  "_last_updated": "2026-03-03",
+  "_privacy_policy_url": "https://openride.coop/privacy",
+
+  "privacy_details": {
+
+    "data_used_to_track_you": {
+      "_description": "Data used to track you across apps and websites owned by other companies for advertising or advertising measurement purposes.",
+      "data_types": [],
+      "note": "OpenRide does NOT track users across apps or websites. We do not participate in ad networks or use advertising identifiers."
+    },
+
+    "data_linked_to_you": {
+      "_description": "Data that is linked to your identity through your account or device.",
+      "data_types": [
+        {
+          "category": "Contact Info",
+          "data_type": "Name",
+          "purposes": ["App Functionality"],
+          "description": "Full name for account identification and safety verification during rides."
+        },
+        {
+          "category": "Contact Info",
+          "data_type": "Email Address",
+          "purposes": ["App Functionality"],
+          "description": "Email for account login, service notifications, and governance participation."
+        },
+        {
+          "category": "Contact Info",
+          "data_type": "Phone Number",
+          "purposes": ["App Functionality"],
+          "description": "Phone number for two-factor authentication and ride communication via masked calls/SMS."
+        },
+        {
+          "category": "Location",
+          "data_type": "Precise Location",
+          "purposes": ["App Functionality"],
+          "description": "GPS location collected during active rides only for navigation, fare calculation, and safety. Drivers share location while online for ride matching."
+        },
+        {
+          "category": "Financial Info",
+          "data_type": "Payment Info",
+          "purposes": ["App Functionality"],
+          "description": "Payment card details (last 4 digits, type, expiration) for processing ride payments. Full card data processed by Stripe (PCI-DSS Level 1)."
+        },
+        {
+          "category": "Financial Info",
+          "data_type": "Purchase History",
+          "purposes": ["App Functionality"],
+          "description": "Ride transaction history including fares, dates, and payment status for receipts and dispute resolution."
+        },
+        {
+          "category": "Identifiers",
+          "data_type": "User ID",
+          "purposes": ["App Functionality"],
+          "description": "Internal account identifier used to manage your account and process payments."
+        },
+        {
+          "category": "User Content",
+          "data_type": "Photos",
+          "purposes": ["App Functionality"],
+          "description": "Optional profile photo for identity verification. Driver document photos (license, insurance) for driver verification."
+        },
+        {
+          "category": "User Content",
+          "data_type": "Other User Content",
+          "purposes": ["App Functionality"],
+          "description": "In-app messages between riders and drivers during active rides. Governance proposals and comments."
+        }
+      ]
+    },
+
+    "data_not_linked_to_you": {
+      "_description": "Data that is not linked to your identity. This data is collected in aggregate or anonymized form.",
+      "data_types": [
+        {
+          "category": "Diagnostics",
+          "data_type": "Crash Data",
+          "purposes": ["App Functionality"],
+          "description": "Anonymous crash reports to identify and fix app bugs."
+        },
+        {
+          "category": "Diagnostics",
+          "data_type": "Performance Data",
+          "purposes": ["App Functionality"],
+          "description": "Anonymous app performance metrics (load times, response times) for platform improvement."
+        },
+        {
+          "category": "Usage Data",
+          "data_type": "Other Usage Data",
+          "purposes": ["App Functionality"],
+          "description": "Aggregated, anonymized ride statistics used to improve ride matching algorithms and platform performance."
+        }
+      ]
+    },
+
+    "data_not_collected": {
+      "_description": "Data categories that OpenRide explicitly does NOT collect.",
+      "categories": [
+        {
+          "category": "Health & Fitness",
+          "note": "No health or fitness data is collected."
+        },
+        {
+          "category": "Browsing History",
+          "note": "No web browsing history is collected."
+        },
+        {
+          "category": "Search History",
+          "note": "Search queries are not stored beyond the current session."
+        },
+        {
+          "category": "Sensitive Info",
+          "note": "No sensitive information (racial/ethnic data, political opinions, religious beliefs, sexual orientation, biometric data) is collected."
+        },
+        {
+          "category": "Contacts",
+          "note": "Contact data is only accessed on-device for the optional referral feature and is never uploaded to our servers."
+        },
+        {
+          "category": "Audio Data",
+          "note": "Voice calls are facilitated through Twilio but not recorded by OpenRide."
+        },
+        {
+          "category": "Gameplay Content",
+          "note": "Not applicable."
+        }
+      ]
+    }
+  },
+
+  "third_party_sdks": [
+    {
+      "name": "Stripe SDK",
+      "purpose": "Payment processing",
+      "data_collected": [
+        {
+          "data_type": "Payment Info",
+          "linked_to_user": true,
+          "used_for_tracking": false,
+          "purposes": ["App Functionality"]
+        },
+        {
+          "data_type": "Device ID",
+          "linked_to_user": false,
+          "used_for_tracking": false,
+          "purposes": ["App Functionality"]
+        }
+      ],
+      "privacy_policy": "https://stripe.com/privacy"
+    },
+    {
+      "name": "Google Maps SDK",
+      "purpose": "Map display and navigation",
+      "data_collected": [
+        {
+          "data_type": "Precise Location",
+          "linked_to_user": false,
+          "used_for_tracking": false,
+          "purposes": ["App Functionality"]
+        },
+        {
+          "data_type": "Device ID",
+          "linked_to_user": false,
+          "used_for_tracking": false,
+          "purposes": ["App Functionality"]
+        }
+      ],
+      "privacy_policy": "https://policies.google.com/privacy"
+    },
+    {
+      "name": "Expo",
+      "purpose": "App framework and OTA updates",
+      "data_collected": [
+        {
+          "data_type": "Performance Data",
+          "linked_to_user": false,
+          "used_for_tracking": false,
+          "purposes": ["App Functionality"]
+        }
+      ],
+      "privacy_policy": "https://expo.dev/privacy"
+    },
+    {
+      "name": "Sentry",
+      "purpose": "Error monitoring and crash reporting",
+      "data_collected": [
+        {
+          "data_type": "Crash Data",
+          "linked_to_user": false,
+          "used_for_tracking": false,
+          "purposes": ["App Functionality"]
+        },
+        {
+          "data_type": "Performance Data",
+          "linked_to_user": false,
+          "used_for_tracking": false,
+          "purposes": ["App Functionality"]
+        }
+      ],
+      "privacy_policy": "https://sentry.io/privacy/"
+    }
+  ],
+
+  "apple_required_declarations": {
+    "NSPrivacyTracking": false,
+    "NSPrivacyTrackingDomains": [],
+    "NSPrivacyCollectedDataTypes": [
+      {
+        "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeName",
+        "NSPrivacyCollectedDataTypeLinked": true,
+        "NSPrivacyCollectedDataTypeTracking": false,
+        "NSPrivacyCollectedDataTypePurposes": [
+          "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+        ]
+      },
+      {
+        "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeEmailAddress",
+        "NSPrivacyCollectedDataTypeLinked": true,
+        "NSPrivacyCollectedDataTypeTracking": false,
+        "NSPrivacyCollectedDataTypePurposes": [
+          "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+        ]
+      },
+      {
+        "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypePhoneNumber",
+        "NSPrivacyCollectedDataTypeLinked": true,
+        "NSPrivacyCollectedDataTypeTracking": false,
+        "NSPrivacyCollectedDataTypePurposes": [
+          "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+        ]
+      },
+      {
+        "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypePreciseLocation",
+        "NSPrivacyCollectedDataTypeLinked": true,
+        "NSPrivacyCollectedDataTypeTracking": false,
+        "NSPrivacyCollectedDataTypePurposes": [
+          "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+        ]
+      },
+      {
+        "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeCoarseLocation",
+        "NSPrivacyCollectedDataTypeLinked": true,
+        "NSPrivacyCollectedDataTypeTracking": false,
+        "NSPrivacyCollectedDataTypePurposes": [
+          "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+        ]
+      },
+      {
+        "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypePaymentInfo",
+        "NSPrivacyCollectedDataTypeLinked": true,
+        "NSPrivacyCollectedDataTypeTracking": false,
+        "NSPrivacyCollectedDataTypePurposes": [
+          "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+        ]
+      },
+      {
+        "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypePurchaseHistory",
+        "NSPrivacyCollectedDataTypeLinked": true,
+        "NSPrivacyCollectedDataTypeTracking": false,
+        "NSPrivacyCollectedDataTypePurposes": [
+          "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+        ]
+      },
+      {
+        "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeUserID",
+        "NSPrivacyCollectedDataTypeLinked": true,
+        "NSPrivacyCollectedDataTypeTracking": false,
+        "NSPrivacyCollectedDataTypePurposes": [
+          "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+        ]
+      },
+      {
+        "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypePhotos",
+        "NSPrivacyCollectedDataTypeLinked": true,
+        "NSPrivacyCollectedDataTypeTracking": false,
+        "NSPrivacyCollectedDataTypePurposes": [
+          "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+        ]
+      },
+      {
+        "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeCrashData",
+        "NSPrivacyCollectedDataTypeLinked": false,
+        "NSPrivacyCollectedDataTypeTracking": false,
+        "NSPrivacyCollectedDataTypePurposes": [
+          "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+        ]
+      },
+      {
+        "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypePerformanceData",
+        "NSPrivacyCollectedDataTypeLinked": false,
+        "NSPrivacyCollectedDataTypeTracking": false,
+        "NSPrivacyCollectedDataTypePurposes": [
+          "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+        ]
+      }
+    ],
+    "NSPrivacyAccessedAPITypes": [
+      {
+        "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+        "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
+      },
+      {
+        "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategorySystemBootTime",
+        "NSPrivacyAccessedAPITypeReasons": ["35F9.1"]
+      }
+    ]
+  }
+}

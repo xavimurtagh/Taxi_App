@@ -1,0 +1,63 @@
+OpenRide — Community-Owned Ride Sharing
+
+Ride sharing that puts people first. OpenRide is the first non-profit, community-owned cooperative ride-sharing platform. Built by drivers and riders, for drivers and riders — with no shareholders to extract profit from your fares.
+
+WHY OPENRIDE?
+
+Unlike traditional ride-sharing apps that take 25-40% of every fare, OpenRide charges only a 5-10% cost-recovery fee — just enough to keep the platform running. Every cent is publicly accounted for on our transparency dashboard.
+
+FAIR PAY FOR DRIVERS
+Drivers keep 90-95% of every fare. No opaque algorithms deciding your earnings. No surge manipulation. No hidden deductions. Your earnings breakdown is transparent down to the penny.
+
+TRANSPARENT FARES FOR RIDERS
+Know exactly how your fare is calculated: base fare + distance + time. See the full breakdown before you ride. Surge pricing is capped and governed by the community — not a profit motive.
+
+DEMOCRATIC GOVERNANCE
+Every member gets a vote. Platform fee changes? Community vote. New features? Community input. Surplus funds? The community decides. This is your platform.
+
+KEY FEATURES:
+
+★ Real-time ride matching with nearby drivers
+★ Transparent fare calculation with full breakdown
+★ Live ride tracking with GPS for safety
+★ In-app messaging and masked calls between driver and rider
+★ Multiple payment methods via secure Stripe processing
+★ Driver earnings dashboard with instant or weekly payouts
+★ Community governance — vote on platform decisions
+★ Public transparency dashboard showing all platform finances
+★ Peer review dispute resolution — not algorithmic deactivation
+★ Referral program to grow the community
+★ Scheduled rides for planning ahead
+★ Ride history and digital receipts
+
+FOR DRIVERS:
+
+★ Keep 90-95% of every fare
+★ No minimum hours or mandatory schedules
+★ Accept or decline any ride — no penalties
+★ Instant payouts available via Stripe Connect
+★ Vote on fee changes and platform policies
+★ Human peer review — never algorithmically deactivated
+★ Full earnings transparency and tax-ready statements
+
+FOR RIDERS:
+
+★ Fair, transparent pricing with no hidden fees
+★ Surge pricing capped by community governance
+★ Rate and review drivers for accountability
+★ Easy cancellation with clear, fair policies
+★ Participate in governance after 5 completed rides
+★ Know that your driver is fairly compensated
+
+OPEN SOURCE & PRIVACY-FIRST:
+
+OpenRide is fully open source (AGPL-3.0). Our code is publicly auditable on GitHub. We collect only the minimum data needed to provide rides. We never sell your data. We never build advertising profiles. Location is only tracked during active rides.
+
+COMMUNITY VALUES:
+
+OpenRide is a non-profit cooperative. There are no shareholders, no venture capital investors, and no Wall Street pressure to increase take rates. Any operating surplus is reinvested in the platform or returned to the community through lower fees or driver bonuses — as decided by democratic vote.
+
+Join the ride-sharing revolution. Download OpenRide today.
+
+Questions? support@openride.coop
+Website: https://openride.coop

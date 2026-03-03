@@ -1,0 +1,18 @@
+Welcome to OpenRide v1.0.0 — the launch of community-owned ride sharing!
+
+What's new:
+- Request rides with transparent, fair pricing
+- Real-time GPS tracking during rides
+- Secure payments via Stripe with full fare breakdowns
+- Driver mode with instant and weekly payout options
+- Community governance — vote on platform decisions
+- Public transparency dashboard for platform finances
+- In-app messaging and masked phone calls
+- Peer review dispute resolution system
+- Referral program to grow the OpenRide community
+- Scheduled rides for planning ahead
+- Ride history and digital receipts
+
+OpenRide is a non-profit cooperative. Drivers keep 90-95% of every fare. No hidden fees. No data selling. Your ride, your community, your platform.
+
+Feedback? Contact us at support@openride.coop

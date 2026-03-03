@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "scheme": "openride",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -17,18 +18,57 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "org.openride.app",
+      "buildNumber": "1",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "OpenRide needs your location to show your position on the map and connect you with nearby drivers.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "OpenRide needs background location access to track your position during active rides.",
-        "NSLocationAlwaysUsageDescription": "OpenRide needs background location access to track your position during active rides.",
-        "NSCameraUsageDescription": "OpenRide needs camera access to update your profile photo.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "OpenRide needs background location access to track your position during active rides and provide accurate fare calculations.",
+        "NSLocationAlwaysUsageDescription": "OpenRide needs background location access to track your position during active rides and provide accurate fare calculations.",
+        "NSCameraUsageDescription": "OpenRide needs camera access to update your profile photo and scan documents for driver verification.",
+        "NSPhotoLibraryUsageDescription": "OpenRide needs photo library access so you can select a profile photo or upload driver documents.",
+        "NSMicrophoneUsageDescription": "OpenRide needs microphone access for in-app voice calls with your driver or passenger.",
+        "NSContactsUsageDescription": "OpenRide can use your contacts to invite friends to the platform.",
+        "NSFaceIDUsageDescription": "OpenRide uses Face ID for secure authentication and payment confirmation.",
         "UIBackgroundModes": [
           "location",
-          "remote-notification"
+          "remote-notification",
+          "fetch"
+        ],
+        "ITSAppUsesNonExemptEncryption": false,
+        "LSApplicationQueriesSchemes": [
+          "comgooglemaps",
+          "waze",
+          "tel",
+          "sms"
         ]
       },
+      "associatedDomains": [
+        "applinks:openride.coop",
+        "applinks:www.openride.coop",
+        "applinks:app.openride.coop"
+      ],
       "config": {
         "googleMapsApiKey": "YOUR_GOOGLE_MAPS_API_KEY"
+      },
+      "entitlements": {
+        "com.apple.developer.applesignin": ["Default"],
+        "aps-environment": "production"
+      },
+      "privacyManifests": {
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
+          }
+        ],
+        "NSPrivacyCollectedDataTypes": [
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypePreciseLocation",
+            "NSPrivacyCollectedDataTypeLinked": true,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": ["NSPrivacyCollectedDataTypePurposeAppFunctionality"]
+          }
+        ],
+        "NSPrivacyTracking": false
       }
     },
     "android": {
@@ -37,54 +77,167 @@
         "backgroundColor": "#2E7D32"
       },
       "package": "org.openride.app",
+      "versionCode": 1,
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
         "ACCESS_BACKGROUND_LOCATION",
         "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
         "RECEIVE_BOOT_COMPLETED",
-        "VIBRATE"
+        "VIBRATE",
+        "RECORD_AUDIO",
+        "READ_CONTACTS",
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION",
+        "POST_NOTIFICATIONS",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
       ],
       "config": {
         "googleMaps": {
           "apiKey": "YOUR_GOOGLE_MAPS_API_KEY"
         }
-      }
+      },
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "openride.coop",
+              "pathPrefix": "/ride"
+            },
+            {
+              "scheme": "https",
+              "host": "openride.coop",
+              "pathPrefix": "/invite"
+            },
+            {
+              "scheme": "https",
+              "host": "app.openride.coop"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        },
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "scheme": "openride",
+              "host": "ride"
+            },
+            {
+              "scheme": "openride",
+              "host": "invite"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ],
+      "googleServicesFile": "./google-services.json",
+      "softwareKeyboardLayoutMode": "pan"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "single",
+      "name": "OpenRide",
+      "shortName": "OpenRide",
+      "description": "Community-owned, non-profit cooperative ride-sharing platform",
+      "backgroundColor": "#ffffff",
+      "themeColor": "#2E7D32",
+      "lang": "en"
     },
     "plugins": [
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "OpenRide needs background location access to track your position during active rides.",
-          "locationAlwaysPermission": "OpenRide needs background location access to track your position during active rides.",
+          "locationAlwaysAndWhenInUsePermission": "OpenRide needs background location access to track your position during active rides and provide accurate fare calculations.",
+          "locationAlwaysPermission": "OpenRide needs background location access to track your position during active rides and provide accurate fare calculations.",
           "locationWhenInUsePermission": "OpenRide needs your location to show your position on the map and connect you with nearby drivers.",
-          "isAndroidBackgroundLocationEnabled": true
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
         }
       ],
       [
         "expo-notifications",
         {
           "icon": "./assets/notification-icon.png",
-          "color": "#2E7D32"
+          "color": "#2E7D32",
+          "sounds": ["./assets/sounds/ride-request.wav"],
+          "mode": "production"
         }
       ],
       [
         "expo-image-picker",
         {
-          "cameraPermission": "OpenRide needs camera access to update your profile photo."
+          "cameraPermission": "OpenRide needs camera access to update your profile photo and scan documents for driver verification.",
+          "photosPermission": "OpenRide needs photo library access so you can select a profile photo or upload driver documents."
         }
       ],
       [
         "expo-secure-store"
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "OpenRide needs camera access for profile photos and document scanning.",
+          "microphonePermission": "OpenRide needs microphone access for in-app voice calls.",
+          "recordAudioAndroid": true
+        }
+      ],
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "OpenRide can use your contacts to invite friends to the platform."
+        }
+      ],
+      [
+        "expo-local-authentication"
+      ],
+      [
+        "expo-router"
       ]
     ],
+    "updates": {
+      "enabled": true,
+      "url": "https://u.expo.dev/your-project-id",
+      "fallbackToCacheTimeout": 30000,
+      "checkAutomatically": "ON_LOAD",
+      "codeSigningCertificate": "./certificates/updates-certificate.pem",
+      "codeSigningMetadata": {
+        "keyid": "main",
+        "alg": "rsa-v1_5-sha256"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "extra": {
       "eas": {
         "projectId": "your-project-id"
-      }
-    }
+      },
+      "apiUrl": "https://api.openride.coop/api",
+      "stripePublishableKey": "pk_live_PLACEHOLDER",
+      "googleMapsApiKey": "YOUR_GOOGLE_MAPS_API_KEY",
+      "sentryDsn": "YOUR_SENTRY_DSN",
+      "termsUrl": "https://openride.coop/terms",
+      "privacyUrl": "https://openride.coop/privacy",
+      "driverAgreementUrl": "https://openride.coop/driver-agreement",
+      "supportEmail": "support@openride.coop",
+      "appEnv": "production"
+    },
+    "owner": "openride-coop"
   }
 }
