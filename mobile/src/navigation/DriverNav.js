@@ -15,6 +15,8 @@ import ElectionScreen from '../screens/governance/ElectionScreen';
 import TransparencyScreen from '../screens/shared/TransparencyScreen';
 import ProfileScreen from '../screens/shared/ProfileScreen';
 import SettingsScreen from '../screens/shared/SettingsScreen';
+import ChatScreen from '../screens/shared/ChatScreen';
+import ReferralScreen from '../screens/shared/ReferralScreen';
 
 const Tab = createBottomTabNavigator();
 const DashboardStack = createNativeStackNavigator();
@@ -56,6 +58,11 @@ const DashboardStackScreen = () => (
       name="DriverRating"
       component={DriverRatingScreen}
       options={{ title: 'Rate Passenger' }}
+    />
+    <DashboardStack.Screen
+      name="Chat"
+      component={ChatScreen}
+      options={{ title: 'Chat' }}
     />
   </DashboardStack.Navigator>
 );
@@ -129,6 +136,11 @@ const ProfileStackScreen = () => (
       name="Settings"
       component={SettingsScreen}
       options={{ title: 'Settings' }}
+    />
+    <ProfileStack.Screen
+      name="Referral"
+      component={ReferralScreen}
+      options={{ title: 'Refer & Earn' }}
     />
   </ProfileStack.Navigator>
 );
