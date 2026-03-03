@@ -8,6 +8,7 @@ const navItems = [
   { href: '/scheduling',    label: 'Schedule',      icon: '\u29D6', section: 'manage' },
   { href: '/chat',          label: 'Chat',          icon: '\u2709', section: 'manage' },
   { href: '/referrals',     label: 'Referrals',     icon: '\u2606', section: 'manage' },
+  { href: '/feedback',      label: 'Feedback',      icon: '\u270E', section: 'manage' },
   { href: '/disputes',      label: 'Disputes',      icon: '\u2696', section: 'manage' },
   { href: '/admin',         label: 'Admin',         icon: '\u2699', section: 'manage' },
 ];

@@ -17,6 +17,7 @@ import SettingsScreen from '../screens/shared/SettingsScreen';
 import TransparencyScreen from '../screens/shared/TransparencyScreen';
 import ChatScreen from '../screens/shared/ChatScreen';
 import ReferralScreen from '../screens/shared/ReferralScreen';
+import FeedbackScreen from '../screens/shared/FeedbackScreen';
 import ScheduleRideScreen from '../screens/passenger/ScheduleRideScreen';
 import RideSharingScreen from '../screens/passenger/RideSharingScreen';
 
@@ -148,6 +149,11 @@ const ProfileStackScreen = () => (
       name="Settings"
       component={SettingsScreen}
       options={{ title: 'Settings' }}
+    />
+    <ProfileStack.Screen
+      name="Feedback"
+      component={FeedbackScreen}
+      options={{ title: 'Send Feedback' }}
     />
     <ProfileStack.Screen
       name="Referral"

@@ -108,6 +108,7 @@ async function mountRoutes() {
     { path: '/payments', module: './routes/payments.js' },
     { path: '/transparency', module: './routes/transparency.js' },
     { path: '/support', module: './routes/support.js' },
+    { path: '/feedback', module: './routes/feedback.js' },
     { path: '/safety', module: './routes/safety.js' },
     { path: '/moderation', module: './routes/moderation.js' },
     { path: '/disputes', module: './routes/disputes.js' },
