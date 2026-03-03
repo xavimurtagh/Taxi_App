@@ -6,7 +6,7 @@ import { notifyUser } from './notifications.js';
 // Constants
 // ---------------------------------------------------------------------------
 
-const CODE_LENGTH = 6;
+const CODE_LENGTH = 8;
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // No ambiguous chars (0,O,1,I)
 const DEFAULT_RIDES_NEEDED = 5;
 const DEFAULT_REWARD_AMOUNT = 10.0;
@@ -20,7 +20,7 @@ const DEFAULT_REWARD_TYPE = 'ride_credit';
  * Generate a unique, human-friendly referral code for a user.
  *
  * If the user already has a referral code, returns the existing one.
- * Otherwise, generates a 6-character alphanumeric code, saves it to
+ * Otherwise, generates an 8-character alphanumeric code, saves it to
  * users.referral_code, and returns it.
  *
  * @param {string} userId - User UUID
@@ -70,7 +70,7 @@ export async function generateReferralCode(userId) {
         return verify.rows[0].referral_code;
       }
     } catch (err) {
-      // Unique constraint violation — try another code
+      // Unique constraint violation -- try another code
       if (err.code === '23505') {
         attempts++;
         continue;
@@ -96,11 +96,11 @@ export async function generateReferralCode(userId) {
  * - The user has not already been referred
  * - The user is not trying to refer themselves
  *
- * @param {string} userId - The user applying the code (referred user)
- * @param {string} code   - The referral code to apply
+ * @param {string} referredUserId - The user applying the code (referred user)
+ * @param {string} code           - The referral code to apply
  * @returns {Promise<Object>} The created referral record
  */
-export async function applyReferralCode(userId, code) {
+export async function applyReferralCode(referredUserId, code) {
   // Look up the referrer by code
   const referrerResult = await query(
     `SELECT id, first_name FROM users WHERE referral_code = $1`,
@@ -114,18 +114,20 @@ export async function applyReferralCode(userId, code) {
   const referrer = referrerResult.rows[0];
 
   // Cannot refer yourself
-  if (referrer.id === userId) {
+  if (referredUserId && referrer.id === referredUserId) {
     throw Object.assign(new Error('You cannot use your own referral code'), { statusCode: 400 });
   }
 
-  // Check if this user has already been referred
-  const existingReferral = await query(
-    `SELECT id FROM referrals WHERE referred_id = $1`,
-    [userId]
-  );
+  // Check if this user has already been referred (only if we have a userId)
+  if (referredUserId) {
+    const existingReferral = await query(
+      `SELECT id FROM referrals WHERE referred_id = $1`,
+      [referredUserId]
+    );
 
-  if (existingReferral.rows.length > 0) {
-    throw Object.assign(new Error('You have already applied a referral code'), { statusCode: 409 });
+    if (existingReferral.rows.length > 0) {
+      throw Object.assign(new Error('You have already applied a referral code'), { statusCode: 409 });
+    }
   }
 
   // Get configurable rides needed
@@ -137,7 +139,7 @@ export async function applyReferralCode(userId, code) {
      VALUES ($1, $2, $3, 'pending', 0, $4)
      RETURNING id, referrer_id, referred_id, referral_code, status,
                rides_completed, rides_needed, created_at`,
-    [referrer.id, userId, code.toUpperCase(), ridesNeeded]
+    [referrer.id, referredUserId, code.toUpperCase(), ridesNeeded]
   );
 
   const referral = result.rows[0];
@@ -145,15 +147,24 @@ export async function applyReferralCode(userId, code) {
   // Notify the referrer
   await notifyUser(referrer.id, 'referral:applied', {
     referralId: referral.id,
-    referredUserId: userId,
+    referredUserId,
     message: 'Someone has used your referral code! They need to complete rides to qualify.',
   });
 
-  return referral;
+  return {
+    id: referral.id,
+    referrerId: referral.referrer_id,
+    referredId: referral.referred_id,
+    referralCode: referral.referral_code,
+    status: referral.status,
+    ridesCompleted: referral.rides_completed,
+    ridesNeeded: referral.rides_needed,
+    createdAt: referral.created_at,
+  };
 }
 
 // ---------------------------------------------------------------------------
-// checkAndQualifyReferral
+// checkReferralProgress
 // ---------------------------------------------------------------------------
 
 /**
@@ -163,7 +174,7 @@ export async function applyReferralCode(userId, code) {
  * @param {string} referredUserId - The referred user who just completed a ride
  * @returns {Promise<Object|null>} The referral if it qualified, null otherwise
  */
-export async function checkAndQualifyReferral(referredUserId) {
+export async function checkReferralProgress(referredUserId) {
   // Find a pending referral for this user
   const referralResult = await query(
     `SELECT id, referrer_id, referred_id, rides_completed, rides_needed
@@ -186,9 +197,9 @@ export async function checkAndQualifyReferral(referredUserId) {
       `UPDATE referrals
        SET rides_completed = $1,
            status = 'qualified',
-           qualified_at = NOW()
+           updated_at = NOW()
        WHERE id = $2
-       RETURNING id, referrer_id, referred_id, status, rides_completed, rides_needed, qualified_at`,
+       RETURNING id, referrer_id, referred_id, status, rides_completed, rides_needed`,
       [newRidesCompleted, referral.id]
     );
 
@@ -215,9 +226,9 @@ export async function checkAndQualifyReferral(referredUserId) {
     return qualifiedReferral;
   }
 
-  // Not yet qualified — just increment the counter
+  // Not yet qualified -- just increment the counter
   await query(
-    `UPDATE referrals SET rides_completed = $1 WHERE id = $2`,
+    `UPDATE referrals SET rides_completed = $1, updated_at = NOW() WHERE id = $2`,
     [newRidesCompleted, referral.id]
   );
 
@@ -229,7 +240,7 @@ export async function checkAndQualifyReferral(referredUserId) {
 // ---------------------------------------------------------------------------
 
 /**
- * Create referral rewards for both the referrer and the referred user.
+ * Create ride_credit entries for both the referrer and the referred user.
  *
  * @param {string} referralId - UUID of the qualified referral
  * @returns {Promise<Array>} Array of two reward records [referrerReward, referredReward]
@@ -270,97 +281,162 @@ export async function issueReward(referralId) {
   const rewardType = (await getConfig('referral_reward_type')) || DEFAULT_REWARD_TYPE;
   const expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000); // 90 days
 
-  // Create reward for referrer
+  const rewards = [];
+
+  // Create reward and ride credit for referrer
   const referrerReward = await query(
     `INSERT INTO referral_rewards (referral_id, user_id, reward_type, amount, status, expires_at)
-     VALUES ($1, $2, $3, $4, 'pending', $5)
+     VALUES ($1, $2, $3, $4, 'credited', $5)
      RETURNING id, referral_id, user_id, reward_type, amount, status, created_at, expires_at`,
     [referralId, referral.referrer_id, rewardType, rewardAmount, expiresAt]
   );
+  rewards.push(referrerReward.rows[0]);
 
-  // Create reward for referred user
+  // Create ride credit for referrer
+  await query(
+    `INSERT INTO ride_credits (user_id, amount, remaining, source, source_id, expires_at)
+     VALUES ($1, $2, $2, 'referral', $3, $4)`,
+    [referral.referrer_id, rewardAmount, referrerReward.rows[0].id, expiresAt]
+  );
+
+  // Create reward and ride credit for referred user
   const referredReward = await query(
     `INSERT INTO referral_rewards (referral_id, user_id, reward_type, amount, status, expires_at)
-     VALUES ($1, $2, $3, $4, 'pending', $5)
+     VALUES ($1, $2, $3, $4, 'credited', $5)
      RETURNING id, referral_id, user_id, reward_type, amount, status, created_at, expires_at`,
     [referralId, referral.referred_id, rewardType, rewardAmount, expiresAt]
+  );
+  rewards.push(referredReward.rows[0]);
+
+  // Create ride credit for referred user
+  await query(
+    `INSERT INTO ride_credits (user_id, amount, remaining, source, source_id, expires_at)
+     VALUES ($1, $2, $2, 'referral', $3, $4)`,
+    [referral.referred_id, rewardAmount, referredReward.rows[0].id, expiresAt]
   );
 
   // Update the referral status to 'rewarded'
   await query(
-    `UPDATE referrals SET status = 'rewarded' WHERE id = $1`,
+    `UPDATE referrals SET status = 'rewarded', updated_at = NOW() WHERE id = $1`,
     [referralId]
   );
 
-  return [referrerReward.rows[0], referredReward.rows[0]];
+  return rewards;
 }
 
 // ---------------------------------------------------------------------------
-// claimReward
+// getUserReferrals
 // ---------------------------------------------------------------------------
 
 /**
- * Claim a referral reward by converting it into a ride credit.
+ * Get paginated list of a user's referrals (people they referred).
  *
- * @param {string} rewardId - UUID of the reward to claim
- * @param {string} userId   - UUID of the user claiming the reward
- * @returns {Promise<Object>} The ride credit record
+ * @param {string} userId   - User UUID
+ * @param {Object} [opts]
+ * @param {number} [opts.page=1]
+ * @param {number} [opts.limit=20]
+ * @returns {Promise<{ referrals: Object[], total: number, page: number, limit: number }>}
  */
-export async function claimReward(rewardId, userId) {
-  // Fetch the reward
-  const rewardResult = await query(
-    `SELECT id, referral_id, user_id, reward_type, amount, status, expires_at
-     FROM referral_rewards
-     WHERE id = $1`,
-    [rewardId]
+export async function getUserReferrals(userId, opts = {}) {
+  const page = Math.max(1, parseInt(opts.page, 10) || 1);
+  const limit = Math.min(50, Math.max(1, parseInt(opts.limit, 10) || 20));
+  const offset = (page - 1) * limit;
+
+  const countResult = await query(
+    `SELECT COUNT(*)::int AS total FROM referrals WHERE referrer_id = $1`,
+    [userId]
   );
 
-  if (rewardResult.rows.length === 0) {
-    throw Object.assign(new Error('Reward not found'), { statusCode: 404 });
-  }
+  const total = countResult.rows[0].total;
 
-  const reward = rewardResult.rows[0];
-
-  // Verify ownership
-  if (reward.user_id !== userId) {
-    throw Object.assign(new Error('You are not authorized to claim this reward'), { statusCode: 403 });
-  }
-
-  // Check status
-  if (reward.status !== 'pending') {
-    throw Object.assign(
-      new Error(`This reward has already been ${reward.status}`),
-      { statusCode: 409 }
-    );
-  }
-
-  // Check expiry
-  if (reward.expires_at && new Date(reward.expires_at) < new Date()) {
-    // Mark as expired
-    await query(
-      `UPDATE referral_rewards SET status = 'expired' WHERE id = $1`,
-      [rewardId]
-    );
-    throw Object.assign(new Error('This reward has expired'), { statusCode: 409 });
-  }
-
-  // Create a ride credit
-  const creditExpiry = new Date(Date.now() + 180 * 24 * 60 * 60 * 1000); // 180 days
-
-  const creditResult = await query(
-    `INSERT INTO ride_credits (user_id, amount, remaining, source, source_id, expires_at)
-     VALUES ($1, $2, $2, 'referral', $3, $4)
-     RETURNING id, user_id, amount, remaining, source, source_id, expires_at, created_at`,
-    [userId, reward.amount, rewardId, creditExpiry]
+  const result = await query(
+    `SELECT r.id, r.referrer_id, r.referred_id, r.referral_code,
+            r.status, r.rides_completed, r.rides_needed,
+            r.created_at, r.updated_at,
+            u.first_name AS referred_first_name,
+            u.last_name AS referred_last_name,
+            u.avatar_url AS referred_avatar_url
+     FROM referrals r
+     JOIN users u ON u.id = r.referred_id
+     WHERE r.referrer_id = $1
+     ORDER BY r.created_at DESC
+     LIMIT $2 OFFSET $3`,
+    [userId, limit, offset]
   );
 
-  // Mark the reward as credited
-  await query(
-    `UPDATE referral_rewards SET status = 'credited', credited_at = NOW() WHERE id = $1`,
-    [rewardId]
+  const referrals = result.rows.map((row) => ({
+    id: row.id,
+    referrerId: row.referrer_id,
+    referredId: row.referred_id,
+    referralCode: row.referral_code,
+    status: row.status,
+    ridesCompleted: row.rides_completed,
+    ridesNeeded: row.rides_needed,
+    referredUser: {
+      id: row.referred_id,
+      firstName: row.referred_first_name,
+      lastName: row.referred_last_name,
+      avatarUrl: row.referred_avatar_url,
+    },
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }));
+
+  return { referrals, total, page, limit };
+}
+
+// ---------------------------------------------------------------------------
+// getUserRewards
+// ---------------------------------------------------------------------------
+
+/**
+ * Get paginated list of a user's referral rewards.
+ *
+ * @param {string} userId   - User UUID
+ * @param {Object} [opts]
+ * @param {number} [opts.page=1]
+ * @param {number} [opts.limit=20]
+ * @returns {Promise<{ rewards: Object[], total: number, page: number, limit: number }>}
+ */
+export async function getUserRewards(userId, opts = {}) {
+  const page = Math.max(1, parseInt(opts.page, 10) || 1);
+  const limit = Math.min(50, Math.max(1, parseInt(opts.limit, 10) || 20));
+  const offset = (page - 1) * limit;
+
+  const countResult = await query(
+    `SELECT COUNT(*)::int AS total FROM referral_rewards WHERE user_id = $1`,
+    [userId]
   );
 
-  return creditResult.rows[0];
+  const total = countResult.rows[0].total;
+
+  const result = await query(
+    `SELECT rr.id, rr.referral_id, rr.user_id, rr.reward_type,
+            rr.amount, rr.status, rr.stripe_transfer_id,
+            rr.created_at, rr.expires_at,
+            ref.referral_code, ref.referrer_id, ref.referred_id
+     FROM referral_rewards rr
+     LEFT JOIN referrals ref ON ref.id = rr.referral_id
+     WHERE rr.user_id = $1
+     ORDER BY rr.created_at DESC
+     LIMIT $2 OFFSET $3`,
+    [userId, limit, offset]
+  );
+
+  const rewards = result.rows.map((row) => ({
+    id: row.id,
+    referralId: row.referral_id,
+    userId: row.user_id,
+    rewardType: row.reward_type,
+    amount: row.amount,
+    status: row.status,
+    stripeTransferId: row.stripe_transfer_id,
+    referralCode: row.referral_code,
+    createdAt: row.created_at,
+    expiresAt: row.expires_at,
+  }));
+
+  return { rewards, total, page, limit };
 }
 
 // ---------------------------------------------------------------------------
@@ -382,34 +458,28 @@ export async function getReferralStats(userId) {
 
   const referralCode = userResult.rows.length > 0 ? userResult.rows[0].referral_code : null;
 
-  // Total referred users
-  const totalResult = await query(
-    `SELECT COUNT(*)::int AS total FROM referrals WHERE referrer_id = $1`,
+  // Aggregate referral counts
+  const referralCounts = await query(
+    `SELECT
+       COUNT(*)::int AS total_referred,
+       COUNT(*) FILTER (WHERE status IN ('qualified', 'rewarded'))::int AS qualified,
+       COUNT(*) FILTER (WHERE status = 'pending')::int AS pending,
+       COUNT(*) FILTER (WHERE status = 'expired')::int AS expired
+     FROM referrals
+     WHERE referrer_id = $1`,
     [userId]
   );
 
-  // Qualified referrals
-  const qualifiedResult = await query(
-    `SELECT COUNT(*)::int AS total FROM referrals
-     WHERE referrer_id = $1 AND status IN ('qualified', 'rewarded')`,
-    [userId]
-  );
-
-  // Pending referrals
-  const pendingResult = await query(
-    `SELECT COUNT(*)::int AS total FROM referrals
-     WHERE referrer_id = $1 AND status = 'pending'`,
-    [userId]
-  );
+  const counts = referralCounts.rows[0];
 
   // Total rewards earned (both as referrer and referred)
   const rewardsResult = await query(
     `SELECT
        COUNT(*)::int AS total_rewards,
-       COALESCE(SUM(amount), 0)::decimal AS total_amount,
-       COUNT(*) FILTER (WHERE status = 'credited')::int AS claimed_rewards,
-       COALESCE(SUM(amount) FILTER (WHERE status = 'credited'), 0)::decimal AS claimed_amount,
-       COUNT(*) FILTER (WHERE status = 'pending')::int AS pending_rewards,
+       COALESCE(SUM(amount), 0)::decimal AS total_earned,
+       COUNT(*) FILTER (WHERE status = 'credited')::int AS credited_count,
+       COALESCE(SUM(amount) FILTER (WHERE status = 'credited'), 0)::decimal AS credited_amount,
+       COUNT(*) FILTER (WHERE status = 'pending')::int AS pending_count,
        COALESCE(SUM(amount) FILTER (WHERE status = 'pending'), 0)::decimal AS pending_amount
      FROM referral_rewards
      WHERE user_id = $1`,
@@ -418,19 +488,75 @@ export async function getReferralStats(userId) {
 
   const rewards = rewardsResult.rows[0];
 
+  // Available ride credits
+  const creditsResult = await query(
+    `SELECT COALESCE(SUM(remaining), 0)::decimal AS available_credits
+     FROM ride_credits
+     WHERE user_id = $1
+       AND remaining > 0
+       AND (expires_at IS NULL OR expires_at > NOW())`,
+    [userId]
+  );
+
   return {
     referralCode,
-    totalReferred: totalResult.rows[0].total,
-    qualifiedReferrals: qualifiedResult.rows[0].total,
-    pendingReferrals: pendingResult.rows[0].total,
+    totalReferred: counts.total_referred,
+    qualifiedReferrals: counts.qualified,
+    pendingReferrals: counts.pending,
+    expiredReferrals: counts.expired,
+    totalEarned: parseFloat(rewards.total_earned),
     rewards: {
       total: rewards.total_rewards,
-      totalAmount: parseFloat(rewards.total_amount),
-      claimed: rewards.claimed_rewards,
-      claimedAmount: parseFloat(rewards.claimed_amount),
-      pending: rewards.pending_rewards,
+      credited: rewards.credited_count,
+      creditedAmount: parseFloat(rewards.credited_amount),
+      pending: rewards.pending_count,
       pendingAmount: parseFloat(rewards.pending_amount),
     },
+    availableCredits: parseFloat(creditsResult.rows[0].available_credits),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// getUserCredits
+// ---------------------------------------------------------------------------
+
+/**
+ * Get available ride credits for a user.
+ *
+ * @param {string} userId - User UUID
+ * @returns {Promise<{ credits: Object[], totalAvailable: number }>}
+ */
+export async function getUserCredits(userId) {
+  const result = await query(
+    `SELECT id, user_id, amount, remaining, source, source_id,
+            expires_at, created_at
+     FROM ride_credits
+     WHERE user_id = $1
+       AND remaining > 0
+       AND (expires_at IS NULL OR expires_at > NOW())
+     ORDER BY expires_at ASC NULLS LAST`,
+    [userId]
+  );
+
+  const credits = result.rows.map((row) => ({
+    id: row.id,
+    userId: row.user_id,
+    amount: row.amount,
+    remaining: row.remaining,
+    source: row.source,
+    sourceId: row.source_id,
+    expiresAt: row.expires_at,
+    createdAt: row.created_at,
+  }));
+
+  const totalAvailable = credits.reduce(
+    (sum, c) => sum + parseFloat(c.remaining),
+    0
+  );
+
+  return {
+    credits,
+    totalAvailable: Math.round(totalAvailable * 100) / 100,
   };
 }
 
