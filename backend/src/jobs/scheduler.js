@@ -4,7 +4,7 @@ import { finalizeExpiredProposals } from '../services/governance.js';
 import { expireModeratorTerms } from '../services/moderation.js';
 import { executeAllPending } from '../services/proposalExecution.js';
 import { dispatchScheduledRide, sendReminders, expireOldScheduledRides } from '../services/scheduling.js';
-import { checkAndQualifyReferral } from '../services/referrals.js';
+import { checkReferralProgress } from '../services/referrals.js';
 
 /**
  * Start all scheduled background jobs
@@ -234,7 +234,7 @@ export function startScheduler() {
 
       for (const row of recentRides.rows) {
         try {
-          const result = await checkAndQualifyReferral(row.passenger_id);
+          const result = await checkReferralProgress(row.passenger_id);
           if (result) {
             qualifiedCount++;
           }
