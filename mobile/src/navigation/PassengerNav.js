@@ -149,6 +149,11 @@ const ProfileStackScreen = () => (
       component={SettingsScreen}
       options={{ title: 'Settings' }}
     />
+    <ProfileStack.Screen
+      name="Referral"
+      component={ReferralScreen}
+      options={{ title: 'Refer & Earn' }}
+    />
   </ProfileStack.Navigator>
 );
 
