@@ -1,0 +1,32 @@
+# Dependencies — installed inside the container
+node_modules
+
+# Build output — rebuilt inside the container
+.next
+out
+
+# Development files
+.env
+.env.*
+.git
+.gitignore
+.dockerignore
+Dockerfile
+
+# IDE/editor files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documentation
+README.md
+CHANGELOG.md
+
+# CI/CD
+.github

@@ -1,0 +1,15 @@
+# =============================================================================
+# OpenRide — Backup Cron Schedule
+# =============================================================================
+#
+# This crontab runs inside the backup container.
+# All times are in UTC (the container timezone is set to UTC).
+#
+# Format: minute hour day month weekday command
+# =============================================================================
+
+# Run daily backup at 2:00 AM UTC
+0 2 * * * /scripts/backup.sh >> /var/log/openride-backup.log 2>&1
+
+# Run weekly full backup on Sundays at 3:00 AM UTC (separate naming)
+0 3 * * 0 /scripts/backup.sh --manual >> /var/log/openride-backup.log 2>&1

@@ -1,0 +1,402 @@
+# =============================================================================
+# OpenRide — CI/CD Deployment Pipeline
+# =============================================================================
+#
+# This workflow handles the full deployment lifecycle:
+#   1. Run tests (backend + mobile)
+#   2. Build Docker images
+#   3. Push to GitHub Container Registry (ghcr.io)
+#   4. Deploy to staging (automatic on push to main)
+#   5. Deploy to production (requires manual approval)
+#
+# Required repository secrets:
+#   STAGING_SSH_HOST         - Staging server hostname/IP
+#   STAGING_SSH_USER         - Staging server SSH user
+#   STAGING_SSH_KEY          - Staging server SSH private key
+#   PRODUCTION_SSH_HOST      - Production server hostname/IP
+#   PRODUCTION_SSH_USER      - Production server SSH user
+#   PRODUCTION_SSH_KEY       - Production server SSH private key
+#   SLACK_WEBHOOK_URL        - Slack/Discord webhook for failure notifications
+#
+# =============================================================================
+
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+# Prevent concurrent deployments — cancel any in-progress deployment
+# when a new commit is pushed to main.
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+# Permissions needed for pushing to GHCR
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  API_IMAGE: ghcr.io/${{ github.repository_owner }}/openride-api
+  WEB_IMAGE: ghcr.io/${{ github.repository_owner }}/openride-web
+
+jobs:
+  # ===========================================================================
+  # Job 1: Run Tests
+  # ===========================================================================
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_DB: openride_test
+          POSTGRES_USER: openride
+          POSTGRES_PASSWORD: openride
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            mobile/package-lock.json
+
+      # -- Backend tests --
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Run database migrations
+        working-directory: backend
+        run: psql "$DATABASE_URL" -f migrations/001_initial_schema.sql
+        env:
+          DATABASE_URL: postgresql://openride:openride@localhost:5432/openride_test
+
+      - name: Run backend tests
+        working-directory: backend
+        run: npm test
+        env:
+          NODE_ENV: test
+          DATABASE_URL: postgresql://openride:openride@localhost:5432/openride_test
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test-secret-key
+          JWT_REFRESH_SECRET: test-refresh-secret-key
+
+      # -- Mobile tests --
+      - name: Install mobile dependencies
+        working-directory: mobile
+        run: npm ci
+
+      - name: Run mobile tests
+        working-directory: mobile
+        run: npm test -- --passWithNoTests
+
+  # ===========================================================================
+  # Job 2: Build Docker Images
+  # ===========================================================================
+  build:
+    name: Build & Push Docker Images
+    needs: test
+    runs-on: ubuntu-latest
+
+    outputs:
+      image_tag: ${{ steps.meta.outputs.version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for tagging
+        id: meta
+        run: |
+          SHA_SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "version=${SHA_SHORT}" >> "$GITHUB_OUTPUT"
+          echo "sha_tag=${SHA_SHORT}" >> "$GITHUB_OUTPUT"
+
+      # -- Build API image --
+      - name: Build and push API image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.API_IMAGE }}:${{ steps.meta.outputs.sha_tag }}
+            ${{ env.API_IMAGE }}:latest
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+
+      # -- Build Web image --
+      - name: Build and push Web image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./web
+          file: ./web/Dockerfile
+          push: true
+          tags: |
+            ${{ env.WEB_IMAGE }}:${{ steps.meta.outputs.sha_tag }}
+            ${{ env.WEB_IMAGE }}:latest
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+
+  # ===========================================================================
+  # Job 3: Deploy to Staging
+  # ===========================================================================
+  deploy-staging:
+    name: Deploy to Staging
+    needs: build
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to staging server
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.STAGING_SSH_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            set -euo pipefail
+
+            cd /opt/openride
+
+            # Pull the latest images tagged with this commit SHA
+            export IMAGE_TAG=${{ needs.build.outputs.image_tag }}
+
+            echo "Deploying OpenRide to staging (tag: ${IMAGE_TAG})..."
+
+            # Pull new images
+            docker compose -f docker-compose.prod.yml pull api web
+
+            # Run database migrations
+            docker compose -f docker-compose.prod.yml run --rm api \
+              node -e "
+                import('pg').then(async ({ default: pg }) => {
+                  const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+                  const fs = await import('fs');
+                  const path = await import('path');
+                  const migrationsDir = './migrations';
+                  const files = fs.readdirSync(migrationsDir).sort();
+                  for (const file of files) {
+                    if (file.endsWith('.sql')) {
+                      console.log('Running migration:', file);
+                      const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
+                      await pool.query(sql);
+                    }
+                  }
+                  await pool.end();
+                  console.log('Migrations complete.');
+                }).catch(err => { console.error(err); process.exit(1); });
+              "
+
+            # Rolling restart — update containers one at a time
+            docker compose -f docker-compose.prod.yml up -d --no-deps api web
+
+            # Wait for health checks to pass
+            echo "Waiting for services to be healthy..."
+            sleep 10
+
+            # Verify health
+            for i in 1 2 3 4 5; do
+              if curl -sf http://localhost:3000/health > /dev/null; then
+                echo "Health check passed on attempt ${i}."
+                break
+              fi
+              if [ "$i" = "5" ]; then
+                echo "Health check failed after 5 attempts!"
+                exit 1
+              fi
+              sleep 5
+            done
+
+            echo "Staging deployment complete!"
+
+      - name: Verify staging deployment
+        run: |
+          echo "Staging deployment completed for tag: ${{ needs.build.outputs.image_tag }}"
+          echo "Verify at your staging URL before approving production deployment."
+
+  # ===========================================================================
+  # Job 4: Deploy to Production (Manual Approval Required)
+  # ===========================================================================
+  deploy-production:
+    name: Deploy to Production
+    needs: [build, deploy-staging]
+    runs-on: ubuntu-latest
+
+    # The 'production' environment in GitHub requires manual approval.
+    # Configure this in: Settings > Environments > production > Required reviewers
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to production server
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PRODUCTION_SSH_HOST }}
+          username: ${{ secrets.PRODUCTION_SSH_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          script: |
+            set -euo pipefail
+
+            cd /opt/openride
+
+            export IMAGE_TAG=${{ needs.build.outputs.image_tag }}
+
+            echo "========================================="
+            echo "  Deploying OpenRide to PRODUCTION"
+            echo "  Image tag: ${IMAGE_TAG}"
+            echo "========================================="
+
+            # Save the current image tag for potential rollback
+            PREVIOUS_TAG=$(cat .current-tag 2>/dev/null || echo "unknown")
+            echo "${IMAGE_TAG}" > .current-tag
+            echo "Previous tag: ${PREVIOUS_TAG}"
+
+            # Pull new images
+            docker compose -f docker-compose.prod.yml pull api web
+
+            # Run database migrations
+            docker compose -f docker-compose.prod.yml run --rm api \
+              node -e "
+                import('pg').then(async ({ default: pg }) => {
+                  const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+                  const fs = await import('fs');
+                  const path = await import('path');
+                  const migrationsDir = './migrations';
+                  const files = fs.readdirSync(migrationsDir).sort();
+                  for (const file of files) {
+                    if (file.endsWith('.sql')) {
+                      console.log('Running migration:', file);
+                      const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
+                      await pool.query(sql);
+                    }
+                  }
+                  await pool.end();
+                  console.log('Migrations complete.');
+                }).catch(err => { console.error(err); process.exit(1); });
+              "
+
+            # Rolling restart with zero-downtime
+            # Scale up new containers first, then remove old ones
+            docker compose -f docker-compose.prod.yml up -d --no-deps --scale api=3 api
+            sleep 15
+
+            # Health check the new containers
+            HEALTHY=false
+            for i in 1 2 3 4 5 6; do
+              if curl -sf http://localhost:3000/health > /dev/null; then
+                HEALTHY=true
+                echo "Health check passed on attempt ${i}."
+                break
+              fi
+              echo "Health check attempt ${i} failed, retrying in 10s..."
+              sleep 10
+            done
+
+            if [ "$HEALTHY" = "false" ]; then
+              echo "CRITICAL: Health checks failed! Rolling back to ${PREVIOUS_TAG}..."
+              export IMAGE_TAG="${PREVIOUS_TAG}"
+              echo "${PREVIOUS_TAG}" > .current-tag
+              docker compose -f docker-compose.prod.yml up -d --no-deps api
+              echo "Rollback complete. Deployment FAILED."
+              exit 1
+            fi
+
+            # Scale back down to normal replica count
+            docker compose -f docker-compose.prod.yml up -d --no-deps --scale api=2 api
+
+            # Update web frontend
+            docker compose -f docker-compose.prod.yml up -d --no-deps web
+
+            echo "========================================="
+            echo "  Production deployment SUCCESSFUL"
+            echo "  Tag: ${IMAGE_TAG}"
+            echo "========================================="
+
+  # ===========================================================================
+  # Notification — alert on failure
+  # ===========================================================================
+  notify-failure:
+    name: Notify on Failure
+    needs: [test, build, deploy-staging, deploy-production]
+    if: failure()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send failure notification
+        env:
+          WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -z "${WEBHOOK_URL:-}" ]; then
+            echo "No webhook URL configured, skipping notification."
+            exit 0
+          fi
+
+          # This payload format works with both Slack and Discord webhooks
+          curl -s -X POST "$WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"text\": \"OpenRide Deployment FAILED\",
+              \"blocks\": [
+                {
+                  \"type\": \"section\",
+                  \"text\": {
+                    \"type\": \"mrkdwn\",
+                    \"text\": \"*OpenRide Deployment Failed*\n\nBranch: \`${{ github.ref_name }}\`\nCommit: \`${{ github.sha }}\`\nAuthor: ${{ github.actor }}\n\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View workflow run>\"
+                  }
+                }
+              ]
+            }"
+
+          echo "Failure notification sent."
