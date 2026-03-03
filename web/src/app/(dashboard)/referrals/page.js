@@ -7,7 +7,7 @@ import {
   formatDate,
   formatNumber,
   isAuthenticated,
-} from '../../lib/api';
+} from '../../../lib/api';
 
 const REFERRAL_STATUS_BADGE = {
   pending: 'badge-yellow',

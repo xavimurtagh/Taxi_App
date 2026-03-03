@@ -10,7 +10,7 @@ import {
   timeRemaining,
   isAuthenticated,
   getToken,
-} from '../../../lib/api';
+} from '../../../../lib/api';
 
 const CATEGORY_COLORS = {
   fee_structure: 'badge-blue',

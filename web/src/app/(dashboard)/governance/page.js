@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { fetchAPI, formatNumber, timeRemaining, formatDate, isAuthenticated } from '../../lib/api';
+import { fetchAPI, formatNumber, timeRemaining, formatDate, isAuthenticated } from '../../../lib/api';
 
 const TABS = [
   { key: 'active', label: 'Active Proposals' },

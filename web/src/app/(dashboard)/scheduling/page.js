@@ -5,7 +5,7 @@ import {
   fetchAPI,
   formatDateTime,
   isAuthenticated,
-} from '../../lib/api';
+} from '../../../lib/api';
 
 const STATUS_BADGE = {
   scheduled: 'badge-blue',

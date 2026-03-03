@@ -5,7 +5,7 @@ import {
   fetchAPI,
   formatDateTime,
   isAuthenticated,
-} from '../../lib/api';
+} from '../../../lib/api';
 
 export default function ChatPage() {
   const [authed, setAuthed] = useState(false);

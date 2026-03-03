@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { fetchAPI, formatCurrency } from '../../lib/api';
+import { fetchAPI, formatCurrency } from '../../../lib/api';
 
 const VEHICLE_ICONS = {
   standard: '&#128663;',

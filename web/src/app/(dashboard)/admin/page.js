@@ -7,7 +7,7 @@ import {
   formatDate,
   formatDateTime,
   isAuthenticated,
-} from '../../lib/api';
+} from '../../../lib/api';
 
 export default function AdminPage() {
   const [authed, setAuthed] = useState(false);

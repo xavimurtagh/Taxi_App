@@ -6,7 +6,7 @@ import {
   formatDate,
   formatDateTime,
   isAuthenticated,
-} from '../../lib/api';
+} from '../../../lib/api';
 
 const STATUS_BADGE = {
   submitted: 'badge-yellow',

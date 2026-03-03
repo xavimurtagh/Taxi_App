@@ -1,0 +1,35 @@
+# Dependencies — installed inside the container
+node_modules
+
+# Development files
+.env
+.env.*
+.git
+.gitignore
+.dockerignore
+Dockerfile
+
+# Test files
+tests
+coverage
+*.test.js
+jest.config.*
+
+# IDE/editor files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documentation
+README.md
+CHANGELOG.md
+docs
+
+# CI/CD
+.github

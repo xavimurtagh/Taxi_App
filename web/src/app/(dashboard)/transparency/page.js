@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { fetchAPI, formatCurrency, formatNumber } from '../../lib/api';
+import { fetchAPI, formatCurrency, formatNumber } from '../../../lib/api';
 
 const PERIODS = [
   { key: 'current_quarter', label: 'Current Quarter' },
