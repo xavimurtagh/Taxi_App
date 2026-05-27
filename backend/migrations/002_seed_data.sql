@@ -20,19 +20,19 @@ BEGIN;
 -- driver3: Frank Garcia       = d2000000-0000-0000-0000-000000000003
 
 -- Driver profiles
--- profile1 (Dave)             = dp300000-0000-0000-0000-000000000001
--- profile2 (Eve)              = dp300000-0000-0000-0000-000000000002
--- profile3 (Frank)            = dp300000-0000-0000-0000-000000000003
+-- profile1 (Dave)             = d0300000-0000-0000-0000-000000000001
+-- profile2 (Eve)              = d0300000-0000-0000-0000-000000000002
+-- profile3 (Frank)            = d0300000-0000-0000-0000-000000000003
 
 -- Rides
--- ride1                       = r4000000-0000-0000-0000-000000000001
--- ride2                       = r4000000-0000-0000-0000-000000000002
--- ride3                       = r4000000-0000-0000-0000-000000000003
--- ride4                       = r4000000-0000-0000-0000-000000000004
--- ride5                       = r4000000-0000-0000-0000-000000000005
+-- ride1                       = a4000000-0000-0000-0000-000000000001
+-- ride2                       = a4000000-0000-0000-0000-000000000002
+-- ride3                       = a4000000-0000-0000-0000-000000000003
+-- ride4                       = a4000000-0000-0000-0000-000000000004
+-- ride5                       = a4000000-0000-0000-0000-000000000005
 
 -- Governance proposal
--- proposal1                   = gp500000-0000-0000-0000-000000000001
+-- proposal1                   = 60500000-0000-0000-0000-000000000001
 
 -- --------------------------------------------------------------------------
 -- 1. Passenger Users
@@ -147,7 +147,7 @@ VALUES
 INSERT INTO driver_profiles (id, user_id, license_number, license_expiry, vehicle_make, vehicle_model, vehicle_year, vehicle_color, vehicle_plate, vehicle_type, is_online, current_location, documents_verified, background_check_status, total_rides, total_earnings, max_pickup_distance_km, created_at)
 VALUES
     (
-        'dp300000-0000-0000-0000-000000000001',
+        'd0300000-0000-0000-0000-000000000001',
         'd2000000-0000-0000-0000-000000000001',
         'DL-CA-2025-78901',
         '2027-06-15',
@@ -167,7 +167,7 @@ VALUES
         '2025-08-16 09:00:00+00'
     ),
     (
-        'dp300000-0000-0000-0000-000000000002',
+        'd0300000-0000-0000-0000-000000000002',
         'd2000000-0000-0000-0000-000000000002',
         'DL-CA-2024-45678',
         '2026-11-30',
@@ -187,7 +187,7 @@ VALUES
         '2025-08-21 12:00:00+00'
     ),
     (
-        'dp300000-0000-0000-0000-000000000003',
+        'd0300000-0000-0000-0000-000000000003',
         'd2000000-0000-0000-0000-000000000003',
         'DL-CA-2025-12345',
         '2028-03-20',
@@ -214,25 +214,25 @@ VALUES
 INSERT INTO driver_documents (driver_id, document_type, file_url, status, expires_at, uploaded_at)
 VALUES
     -- Dave's documents
-    ('dp300000-0000-0000-0000-000000000001', 'license_front',        'https://storage.openride.dev/docs/dave_license_front.jpg',   'approved', '2027-06-15', '2025-08-16 09:10:00+00'),
-    ('dp300000-0000-0000-0000-000000000001', 'license_back',         'https://storage.openride.dev/docs/dave_license_back.jpg',    'approved', '2027-06-15', '2025-08-16 09:11:00+00'),
-    ('dp300000-0000-0000-0000-000000000001', 'vehicle_registration', 'https://storage.openride.dev/docs/dave_registration.pdf',    'approved', '2026-08-15', '2025-08-16 09:12:00+00'),
-    ('dp300000-0000-0000-0000-000000000001', 'insurance',            'https://storage.openride.dev/docs/dave_insurance.pdf',       'approved', '2026-08-15', '2025-08-16 09:13:00+00'),
-    ('dp300000-0000-0000-0000-000000000001', 'profile_photo',        'https://storage.openride.dev/docs/dave_photo.jpg',           'approved', NULL,         '2025-08-16 09:14:00+00'),
+    ('d0300000-0000-0000-0000-000000000001', 'license_front',        'https://storage.openride.dev/docs/dave_license_front.jpg',   'approved', '2027-06-15', '2025-08-16 09:10:00+00'),
+    ('d0300000-0000-0000-0000-000000000001', 'license_back',         'https://storage.openride.dev/docs/dave_license_back.jpg',    'approved', '2027-06-15', '2025-08-16 09:11:00+00'),
+    ('d0300000-0000-0000-0000-000000000001', 'vehicle_registration', 'https://storage.openride.dev/docs/dave_registration.pdf',    'approved', '2026-08-15', '2025-08-16 09:12:00+00'),
+    ('d0300000-0000-0000-0000-000000000001', 'insurance',            'https://storage.openride.dev/docs/dave_insurance.pdf',       'approved', '2026-08-15', '2025-08-16 09:13:00+00'),
+    ('d0300000-0000-0000-0000-000000000001', 'profile_photo',        'https://storage.openride.dev/docs/dave_photo.jpg',           'approved', NULL,         '2025-08-16 09:14:00+00'),
 
     -- Eve's documents
-    ('dp300000-0000-0000-0000-000000000002', 'license_front',        'https://storage.openride.dev/docs/eve_license_front.jpg',    'approved', '2026-11-30', '2025-08-21 12:10:00+00'),
-    ('dp300000-0000-0000-0000-000000000002', 'license_back',         'https://storage.openride.dev/docs/eve_license_back.jpg',     'approved', '2026-11-30', '2025-08-21 12:11:00+00'),
-    ('dp300000-0000-0000-0000-000000000002', 'vehicle_registration', 'https://storage.openride.dev/docs/eve_registration.pdf',     'approved', '2026-08-20', '2025-08-21 12:12:00+00'),
-    ('dp300000-0000-0000-0000-000000000002', 'insurance',            'https://storage.openride.dev/docs/eve_insurance.pdf',        'approved', '2026-08-20', '2025-08-21 12:13:00+00'),
-    ('dp300000-0000-0000-0000-000000000002', 'profile_photo',        'https://storage.openride.dev/docs/eve_photo.jpg',            'approved', NULL,         '2025-08-21 12:14:00+00'),
+    ('d0300000-0000-0000-0000-000000000002', 'license_front',        'https://storage.openride.dev/docs/eve_license_front.jpg',    'approved', '2026-11-30', '2025-08-21 12:10:00+00'),
+    ('d0300000-0000-0000-0000-000000000002', 'license_back',         'https://storage.openride.dev/docs/eve_license_back.jpg',     'approved', '2026-11-30', '2025-08-21 12:11:00+00'),
+    ('d0300000-0000-0000-0000-000000000002', 'vehicle_registration', 'https://storage.openride.dev/docs/eve_registration.pdf',     'approved', '2026-08-20', '2025-08-21 12:12:00+00'),
+    ('d0300000-0000-0000-0000-000000000002', 'insurance',            'https://storage.openride.dev/docs/eve_insurance.pdf',        'approved', '2026-08-20', '2025-08-21 12:13:00+00'),
+    ('d0300000-0000-0000-0000-000000000002', 'profile_photo',        'https://storage.openride.dev/docs/eve_photo.jpg',            'approved', NULL,         '2025-08-21 12:14:00+00'),
 
     -- Frank's documents
-    ('dp300000-0000-0000-0000-000000000003', 'license_front',        'https://storage.openride.dev/docs/frank_license_front.jpg',  'approved', '2028-03-20', '2025-09-02 08:10:00+00'),
-    ('dp300000-0000-0000-0000-000000000003', 'license_back',         'https://storage.openride.dev/docs/frank_license_back.jpg',   'approved', '2028-03-20', '2025-09-02 08:11:00+00'),
-    ('dp300000-0000-0000-0000-000000000003', 'vehicle_registration', 'https://storage.openride.dev/docs/frank_registration.pdf',   'approved', '2026-09-01', '2025-09-02 08:12:00+00'),
-    ('dp300000-0000-0000-0000-000000000003', 'insurance',            'https://storage.openride.dev/docs/frank_insurance.pdf',      'approved', '2026-09-01', '2025-09-02 08:13:00+00'),
-    ('dp300000-0000-0000-0000-000000000003', 'profile_photo',        'https://storage.openride.dev/docs/frank_photo.jpg',          'approved', NULL,         '2025-09-02 08:14:00+00');
+    ('d0300000-0000-0000-0000-000000000003', 'license_front',        'https://storage.openride.dev/docs/frank_license_front.jpg',  'approved', '2028-03-20', '2025-09-02 08:10:00+00'),
+    ('d0300000-0000-0000-0000-000000000003', 'license_back',         'https://storage.openride.dev/docs/frank_license_back.jpg',   'approved', '2028-03-20', '2025-09-02 08:11:00+00'),
+    ('d0300000-0000-0000-0000-000000000003', 'vehicle_registration', 'https://storage.openride.dev/docs/frank_registration.pdf',   'approved', '2026-09-01', '2025-09-02 08:12:00+00'),
+    ('d0300000-0000-0000-0000-000000000003', 'insurance',            'https://storage.openride.dev/docs/frank_insurance.pdf',      'approved', '2026-09-01', '2025-09-02 08:13:00+00'),
+    ('d0300000-0000-0000-0000-000000000003', 'profile_photo',        'https://storage.openride.dev/docs/frank_photo.jpg',          'approved', NULL,         '2025-09-02 08:14:00+00');
 
 -- --------------------------------------------------------------------------
 -- 5. Completed Rides
@@ -241,7 +241,7 @@ VALUES
 -- Ride 1: Alice -> Dave, economy, completed
 INSERT INTO rides (id, passenger_id, driver_id, status, pickup_location, pickup_address, dropoff_location, dropoff_address, estimated_distance_km, estimated_duration_min, actual_distance_km, actual_duration_min, fare_amount, platform_fee, driver_payout, surge_multiplier, vehicle_type, requested_at, matched_at, pickup_at, dropoff_at)
 VALUES (
-    'r4000000-0000-0000-0000-000000000001',
+    'a4000000-0000-0000-0000-000000000001',
     'a1000000-0000-0000-0000-000000000001',  -- Alice
     'd2000000-0000-0000-0000-000000000001',  -- Dave
     'completed',
@@ -267,7 +267,7 @@ VALUES (
 -- Ride 2: Bob -> Eve, comfort, completed
 INSERT INTO rides (id, passenger_id, driver_id, status, pickup_location, pickup_address, dropoff_location, dropoff_address, estimated_distance_km, estimated_duration_min, actual_distance_km, actual_duration_min, fare_amount, platform_fee, driver_payout, surge_multiplier, vehicle_type, requested_at, matched_at, pickup_at, dropoff_at)
 VALUES (
-    'r4000000-0000-0000-0000-000000000002',
+    'a4000000-0000-0000-0000-000000000002',
     'a1000000-0000-0000-0000-000000000002',  -- Bob
     'd2000000-0000-0000-0000-000000000002',  -- Eve
     'completed',
@@ -293,7 +293,7 @@ VALUES (
 -- Ride 3: Carol -> Frank, xl, completed
 INSERT INTO rides (id, passenger_id, driver_id, status, pickup_location, pickup_address, dropoff_location, dropoff_address, estimated_distance_km, estimated_duration_min, actual_distance_km, actual_duration_min, fare_amount, platform_fee, driver_payout, surge_multiplier, vehicle_type, requested_at, matched_at, pickup_at, dropoff_at)
 VALUES (
-    'r4000000-0000-0000-0000-000000000003',
+    'a4000000-0000-0000-0000-000000000003',
     'a1000000-0000-0000-0000-000000000003',  -- Carol
     'd2000000-0000-0000-0000-000000000003',  -- Frank
     'completed',
@@ -319,7 +319,7 @@ VALUES (
 -- Ride 4: Alice -> Eve, comfort, completed (Alice's second ride)
 INSERT INTO rides (id, passenger_id, driver_id, status, pickup_location, pickup_address, dropoff_location, dropoff_address, estimated_distance_km, estimated_duration_min, actual_distance_km, actual_duration_min, fare_amount, platform_fee, driver_payout, surge_multiplier, vehicle_type, requested_at, matched_at, pickup_at, dropoff_at)
 VALUES (
-    'r4000000-0000-0000-0000-000000000004',
+    'a4000000-0000-0000-0000-000000000004',
     'a1000000-0000-0000-0000-000000000001',  -- Alice
     'd2000000-0000-0000-0000-000000000002',  -- Eve
     'completed',
@@ -345,7 +345,7 @@ VALUES (
 -- Ride 5: Bob -> Dave, economy, completed (Bob's second ride)
 INSERT INTO rides (id, passenger_id, driver_id, status, pickup_location, pickup_address, dropoff_location, dropoff_address, estimated_distance_km, estimated_duration_min, actual_distance_km, actual_duration_min, fare_amount, platform_fee, driver_payout, surge_multiplier, vehicle_type, requested_at, matched_at, pickup_at, dropoff_at)
 VALUES (
-    'r4000000-0000-0000-0000-000000000005',
+    'a4000000-0000-0000-0000-000000000005',
     'a1000000-0000-0000-0000-000000000002',  -- Bob
     'd2000000-0000-0000-0000-000000000001',  -- Dave
     'completed',
@@ -375,7 +375,7 @@ VALUES (
 INSERT INTO payments (ride_id, passenger_id, driver_id, amount, platform_fee, driver_payout, tip_amount, payment_method, stripe_payment_id, stripe_transfer_id, status, created_at)
 VALUES
     (
-        'r4000000-0000-0000-0000-000000000001',
+        'a4000000-0000-0000-0000-000000000001',
         'a1000000-0000-0000-0000-000000000001',
         'd2000000-0000-0000-0000-000000000001',
         12.50, 1.88, 10.62, 2.00,
@@ -386,7 +386,7 @@ VALUES
         '2025-12-01 14:15:30+00'
     ),
     (
-        'r4000000-0000-0000-0000-000000000002',
+        'a4000000-0000-0000-0000-000000000002',
         'a1000000-0000-0000-0000-000000000002',
         'd2000000-0000-0000-0000-000000000002',
         28.75, 4.31, 24.44, 5.00,
@@ -397,7 +397,7 @@ VALUES
         '2025-12-05 18:58:30+00'
     ),
     (
-        'r4000000-0000-0000-0000-000000000003',
+        'a4000000-0000-0000-0000-000000000003',
         'a1000000-0000-0000-0000-000000000003',
         'd2000000-0000-0000-0000-000000000003',
         38.00, 5.70, 32.30, 4.00,
@@ -408,7 +408,7 @@ VALUES
         '2025-12-10 11:33:30+00'
     ),
     (
-        'r4000000-0000-0000-0000-000000000004',
+        'a4000000-0000-0000-0000-000000000004',
         'a1000000-0000-0000-0000-000000000001',
         'd2000000-0000-0000-0000-000000000002',
         22.00, 3.30, 18.70, 3.00,
@@ -419,7 +419,7 @@ VALUES
         '2025-12-15 09:21:30+00'
     ),
     (
-        'r4000000-0000-0000-0000-000000000005',
+        'a4000000-0000-0000-0000-000000000005',
         'a1000000-0000-0000-0000-000000000002',
         'd2000000-0000-0000-0000-000000000001',
         18.50, 2.78, 15.72, 0.00,
@@ -447,24 +447,24 @@ VALUES
 INSERT INTO ratings (ride_id, rater_id, rated_id, score, comment, created_at)
 VALUES
     -- Ride 1: Alice rates Dave, Dave rates Alice
-    ('r4000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 'd2000000-0000-0000-0000-000000000001', 5, 'Great driver, very professional and quick pickup!', '2025-12-01 14:20:00+00'),
-    ('r4000000-0000-0000-0000-000000000001', 'd2000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 5, 'Friendly passenger, ready on time.', '2025-12-01 14:22:00+00'),
+    ('a4000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 'd2000000-0000-0000-0000-000000000001', 5, 'Great driver, very professional and quick pickup!', '2025-12-01 14:20:00+00'),
+    ('a4000000-0000-0000-0000-000000000001', 'd2000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 5, 'Friendly passenger, ready on time.', '2025-12-01 14:22:00+00'),
 
     -- Ride 2: Bob rates Eve, Eve rates Bob
-    ('r4000000-0000-0000-0000-000000000002', 'a1000000-0000-0000-0000-000000000002', 'd2000000-0000-0000-0000-000000000002', 4, 'Nice car and smooth ride. Took a slightly longer route.', '2025-12-05 19:05:00+00'),
-    ('r4000000-0000-0000-0000-000000000002', 'd2000000-0000-0000-0000-000000000002', 'a1000000-0000-0000-0000-000000000002', 5, 'Polite and easy-going passenger.', '2025-12-05 19:10:00+00'),
+    ('a4000000-0000-0000-0000-000000000002', 'a1000000-0000-0000-0000-000000000002', 'd2000000-0000-0000-0000-000000000002', 4, 'Nice car and smooth ride. Took a slightly longer route.', '2025-12-05 19:05:00+00'),
+    ('a4000000-0000-0000-0000-000000000002', 'd2000000-0000-0000-0000-000000000002', 'a1000000-0000-0000-0000-000000000002', 5, 'Polite and easy-going passenger.', '2025-12-05 19:10:00+00'),
 
     -- Ride 3: Carol rates Frank, Frank rates Carol
-    ('r4000000-0000-0000-0000-000000000003', 'a1000000-0000-0000-0000-000000000003', 'd2000000-0000-0000-0000-000000000003', 5, 'Spacious vehicle, perfect for our group. Excellent driver!', '2025-12-10 11:40:00+00'),
-    ('r4000000-0000-0000-0000-000000000003', 'd2000000-0000-0000-0000-000000000003', 'a1000000-0000-0000-0000-000000000003', 5, 'Wonderful group, very respectful of the vehicle.', '2025-12-10 11:45:00+00'),
+    ('a4000000-0000-0000-0000-000000000003', 'a1000000-0000-0000-0000-000000000003', 'd2000000-0000-0000-0000-000000000003', 5, 'Spacious vehicle, perfect for our group. Excellent driver!', '2025-12-10 11:40:00+00'),
+    ('a4000000-0000-0000-0000-000000000003', 'd2000000-0000-0000-0000-000000000003', 'a1000000-0000-0000-0000-000000000003', 5, 'Wonderful group, very respectful of the vehicle.', '2025-12-10 11:45:00+00'),
 
     -- Ride 4: Alice rates Eve, Eve rates Alice
-    ('r4000000-0000-0000-0000-000000000004', 'a1000000-0000-0000-0000-000000000001', 'd2000000-0000-0000-0000-000000000002', 5, 'Another great ride! Love using OpenRide.', '2025-12-15 09:30:00+00'),
-    ('r4000000-0000-0000-0000-000000000004', 'd2000000-0000-0000-0000-000000000002', 'a1000000-0000-0000-0000-000000000001', 5, 'One of the best passengers. Always pleasant!', '2025-12-15 09:35:00+00'),
+    ('a4000000-0000-0000-0000-000000000004', 'a1000000-0000-0000-0000-000000000001', 'd2000000-0000-0000-0000-000000000002', 5, 'Another great ride! Love using OpenRide.', '2025-12-15 09:30:00+00'),
+    ('a4000000-0000-0000-0000-000000000004', 'd2000000-0000-0000-0000-000000000002', 'a1000000-0000-0000-0000-000000000001', 5, 'One of the best passengers. Always pleasant!', '2025-12-15 09:35:00+00'),
 
     -- Ride 5: Bob rates Dave, Dave rates Bob
-    ('r4000000-0000-0000-0000-000000000005', 'a1000000-0000-0000-0000-000000000002', 'd2000000-0000-0000-0000-000000000001', 5, 'Fast and safe. Will ride again.', '2025-12-20 17:20:00+00'),
-    ('r4000000-0000-0000-0000-000000000005', 'd2000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000002', 4, 'Good passenger, slightly late to pickup.', '2025-12-20 17:25:00+00');
+    ('a4000000-0000-0000-0000-000000000005', 'a1000000-0000-0000-0000-000000000002', 'd2000000-0000-0000-0000-000000000001', 5, 'Fast and safe. Will ride again.', '2025-12-20 17:20:00+00'),
+    ('a4000000-0000-0000-0000-000000000005', 'd2000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000002', 4, 'Good passenger, slightly late to pickup.', '2025-12-20 17:25:00+00');
 
 -- --------------------------------------------------------------------------
 -- 9. Governance Proposal
@@ -472,7 +472,7 @@ VALUES
 
 INSERT INTO governance_proposals (id, author_id, title, description, category, status, votes_for, votes_against, quorum_needed, voting_ends_at, created_at)
 VALUES (
-    'gp500000-0000-0000-0000-000000000001',
+    '60500000-0000-0000-0000-000000000001',
     'd2000000-0000-0000-0000-000000000001',   -- Dave authored the proposal
     'Reduce platform fee from 15% to 12% for drivers with 100+ rides',
     'As a community-owned platform, we should reward loyal drivers who have completed over 100 rides. '
@@ -495,11 +495,11 @@ VALUES (
 
 INSERT INTO votes (proposal_id, user_id, vote, created_at)
 VALUES
-    ('gp500000-0000-0000-0000-000000000001', 'd2000000-0000-0000-0000-000000000001', 'for',     '2025-12-20 10:05:00+00'),
-    ('gp500000-0000-0000-0000-000000000001', 'd2000000-0000-0000-0000-000000000002', 'for',     '2025-12-20 14:30:00+00'),
-    ('gp500000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 'for',     '2025-12-21 08:00:00+00'),
-    ('gp500000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000002', 'for',     '2025-12-21 12:00:00+00'),
-    ('gp500000-0000-0000-0000-000000000001', 'd2000000-0000-0000-0000-000000000003', 'against', '2025-12-22 09:00:00+00');
+    ('60500000-0000-0000-0000-000000000001', 'd2000000-0000-0000-0000-000000000001', 'for',     '2025-12-20 10:05:00+00'),
+    ('60500000-0000-0000-0000-000000000001', 'd2000000-0000-0000-0000-000000000002', 'for',     '2025-12-20 14:30:00+00'),
+    ('60500000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 'for',     '2025-12-21 08:00:00+00'),
+    ('60500000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000002', 'for',     '2025-12-21 12:00:00+00'),
+    ('60500000-0000-0000-0000-000000000001', 'd2000000-0000-0000-0000-000000000003', 'against', '2025-12-22 09:00:00+00');
 
 -- --------------------------------------------------------------------------
 -- 11. Platform Financials (Q4 2025: October - December)

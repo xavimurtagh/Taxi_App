@@ -3,6 +3,8 @@
 -- ============================================================================
 -- Features: Push notifications, Ride scheduling, Multiple vehicle types,
 --           Accessibility, In-app chat, Ride sharing/carpooling,
+
+BEGIN;
 --           Driver referral program, Multi-language support, Offline sync
 -- ============================================================================
 
@@ -289,3 +291,5 @@ INSERT INTO platform_config (key, value, data_type, category, description, gover
   ('chat_enabled', 'true', 'boolean', 'operations', 'Enable in-app chat between driver and passenger', TRUE),
   ('max_scheduled_rides_per_user', '10', 'number', 'operations', 'Max active scheduled rides per user', TRUE)
 ON CONFLICT (key) DO NOTHING;
+
+COMMIT;
