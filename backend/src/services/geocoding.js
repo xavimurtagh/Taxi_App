@@ -1,4 +1,4 @@
-import { env } from '../config/env.js';
+import env from '../config/env.js';
 
 const GEOCODING_URL = env.GEOCODING_URL || 'https://nominatim.openstreetmap.org';
 
