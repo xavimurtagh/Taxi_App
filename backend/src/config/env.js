@@ -38,6 +38,17 @@ const env = {
   S3_ENDPOINT: process.env.S3_ENDPOINT || '',
   S3_REGION: process.env.S3_REGION || 'us-east-1',
 
+  // Email (SMTP) — used for password resets and transactional email.
+  // Works with any SMTP provider (SendGrid, SES, Mailgun, Postmark, ...).
+  SMTP_HOST: process.env.SMTP_HOST || '',
+  SMTP_PORT: parseInt(process.env.SMTP_PORT, 10) || 587,
+  SMTP_USER: process.env.SMTP_USER || '',
+  SMTP_PASSWORD: process.env.SMTP_PASSWORD || '',
+  SMTP_FROM: process.env.SMTP_FROM || 'OpenRide <no-reply@openride.coop>',
+
+  // Public base URL of the web app, used to build links in emails.
+  WEB_APP_URL: process.env.WEB_APP_URL || 'http://localhost:3001',
+
   // External services
   SENTRY_DSN: process.env.SENTRY_DSN || '',
   OSRM_URL: process.env.OSRM_URL || 'http://localhost:5001',

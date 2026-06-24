@@ -9,6 +9,12 @@ import { validate } from '../middleware/validation.js';
 import { registerSchema, loginSchema } from '../utils/validators.js';
 import { authLimiter } from '../middleware/rateLimit.js';
 import { sendVerificationCode } from '../services/sms.js';
+import { sendPasswordResetEmail } from '../services/email.js';
+import crypto from 'node:crypto';
+
+// Password reset token settings
+const RESET_TOKEN_TTL_SECONDS = 1800; // 30 minutes
+const resetTokenKey = (token) => `pw_reset:${token}`;
 
 // Phone verification code storage (Redis) settings
 const PHONE_CODE_TTL_SECONDS = 600; // 10 minutes
@@ -426,6 +432,100 @@ router.post('/send-verification', authenticate, authLimiter, async (req, res) =>
     return res.status(500).json({
       error: 'Internal server error',
       message: 'An unexpected error occurred while sending the verification code',
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /forgot-password
+// ---------------------------------------------------------------------------
+router.post('/forgot-password', authLimiter, async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({
+        error: 'Bad request',
+        message: 'An email address is required',
+      });
+    }
+
+    const userResult = await query(
+      `SELECT id FROM users WHERE email = $1 AND is_active = true`,
+      [email.toLowerCase().trim()],
+    );
+
+    // Only send a reset email when the account exists, but always return the
+    // same response so this endpoint can't be used to enumerate accounts.
+    if (userResult.rows.length > 0) {
+      const userId = userResult.rows[0].id;
+      const token = crypto.randomBytes(32).toString('hex');
+      await redis.set(resetTokenKey(token), userId, 'EX', RESET_TOKEN_TTL_SECONDS);
+      try {
+        await sendPasswordResetEmail(email.trim(), token);
+      } catch (mailErr) {
+        console.error('[auth] Failed to send reset email:', mailErr.message);
+      }
+    }
+
+    return res.status(200).json({
+      message: 'If an account exists for that email, a reset link has been sent.',
+    });
+  } catch (err) {
+    console.error('[auth] Forgot password error:', err);
+    return res.status(500).json({
+      error: 'Internal server error',
+      message: 'An unexpected error occurred while processing the request',
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /reset-password
+// ---------------------------------------------------------------------------
+router.post('/reset-password', authLimiter, async (req, res) => {
+  try {
+    const { token, password } = req.body;
+
+    if (!token || typeof token !== 'string') {
+      return res.status(400).json({
+        error: 'Bad request',
+        message: 'A reset token is required',
+      });
+    }
+    if (!password || typeof password !== 'string' || password.length < 8) {
+      return res.status(400).json({
+        error: 'Bad request',
+        message: 'A new password of at least 8 characters is required',
+      });
+    }
+
+    const userId = await redis.get(resetTokenKey(token));
+    if (!userId) {
+      return res.status(400).json({
+        error: 'Bad request',
+        message: 'This reset link is invalid or has expired. Please request a new one.',
+      });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    await query(`UPDATE users SET password_hash = $1 WHERE id = $2`, [
+      passwordHash,
+      userId,
+    ]);
+
+    // Consume the token and revoke all existing sessions for safety.
+    await redis.del(resetTokenKey(token));
+    await query(`DELETE FROM refresh_tokens WHERE user_id = $1`, [userId]);
+
+    return res.status(200).json({
+      message: 'Password has been reset. Please log in with your new password.',
+    });
+  } catch (err) {
+    console.error('[auth] Reset password error:', err);
+    return res.status(500).json({
+      error: 'Internal server error',
+      message: 'An unexpected error occurred while resetting the password',
     });
   }
 });
