@@ -729,9 +729,10 @@ router.get(
 
       const ridesResult = await query(
         `SELECT r.id, r.pickup_address, r.dropoff_address,
-                r.fare_amount, r.driver_payout, r.platform_fee,
+                COALESCE(r.actual_fare, r.estimated_fare) AS fare_amount,
+                r.driver_payout, r.platform_fee,
                 r.surge_multiplier, r.vehicle_type,
-                r.actual_distance_km, r.actual_duration_min,
+                r.actual_distance, r.actual_duration,
                 r.dropoff_at
          FROM rides r
          WHERE r.driver_id = $1
@@ -750,8 +751,8 @@ router.get(
         platformFee: parseFloat(row.platform_fee),
         surgeMultiplier: parseFloat(row.surge_multiplier),
         vehicleType: row.vehicle_type,
-        actualDistanceKm: row.actual_distance_km ? parseFloat(row.actual_distance_km) : null,
-        actualDurationMin: row.actual_duration_min,
+        actualDistanceKm: row.actual_distance ? parseFloat(row.actual_distance) : null,
+        actualDurationMin: row.actual_duration,
         completedAt: row.dropoff_at,
       }));
 

@@ -20,8 +20,10 @@ ALTER TABLE rides ADD COLUMN IF NOT EXISTS actual_fare DECIMAL(10,2);
 ALTER TABLE rides ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 -- cancelled_by stores role strings ('passenger', 'driver', 'system'), not UUIDs
-ALTER TABLE rides ALTER COLUMN cancelled_by TYPE VARCHAR(20) USING cancelled_by::VARCHAR;
+-- Drop the FK constraint before changing the type (the type change would
+-- otherwise try to re-validate the FK against incompatible types).
 ALTER TABLE rides DROP CONSTRAINT IF EXISTS rides_cancelled_by_fkey;
+ALTER TABLE rides ALTER COLUMN cancelled_by TYPE VARCHAR(20) USING cancelled_by::VARCHAR;
 
 -- --------------------------------------------------------------------------
 -- 2. chat_messages: rename read -> is_read, allow NULL sender for system msgs

@@ -99,7 +99,7 @@ export async function calculateSurplus(periodStart, periodEnd) {
   const feesResult = await query(
     `SELECT COALESCE(SUM(platform_fee), 0) AS total_fees,
             COUNT(*) AS total_rides,
-            COALESCE(SUM(fare_amount), 0) AS total_fares
+            COALESCE(SUM(COALESCE(actual_fare, estimated_fare)), 0) AS total_fares
      FROM rides
      WHERE status = 'completed'
      AND dropoff_at >= $1 AND dropoff_at < $2`,

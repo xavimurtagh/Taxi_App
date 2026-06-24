@@ -37,7 +37,7 @@ BEGIN;
 -- --------------------------------------------------------------------------
 -- 1. Passenger Users
 -- Password for all users: 'password123'
--- bcrypt hash: $2a$10$rQEY1it7gB7EMQXF/2tiXuGDg.IFiGdaPqXCni8KbvKn3kuJkqHQC
+-- bcrypt hash: $2a$10$rqBlxPefIAAnIBnS51DwqeZxrz8PxLR/FvZlSMUesT/YZqfVp0pmi
 -- --------------------------------------------------------------------------
 
 INSERT INTO users (id, email, phone, password_hash, first_name, last_name, role, is_verified, is_active, rating_avg, rating_count, created_at, updated_at)
@@ -46,7 +46,7 @@ VALUES
         'a1000000-0000-0000-0000-000000000001',
         'alice@example.com',
         '+14155550101',
-        '$2a$10$rQEY1it7gB7EMQXF/2tiXuGDg.IFiGdaPqXCni8KbvKn3kuJkqHQC',
+        '$2a$10$rqBlxPefIAAnIBnS51DwqeZxrz8PxLR/FvZlSMUesT/YZqfVp0pmi',
         'Alice',
         'Johnson',
         'passenger',
@@ -61,7 +61,7 @@ VALUES
         'a1000000-0000-0000-0000-000000000002',
         'bob@example.com',
         '+14155550102',
-        '$2a$10$rQEY1it7gB7EMQXF/2tiXuGDg.IFiGdaPqXCni8KbvKn3kuJkqHQC',
+        '$2a$10$rqBlxPefIAAnIBnS51DwqeZxrz8PxLR/FvZlSMUesT/YZqfVp0pmi',
         'Bob',
         'Williams',
         'passenger',
@@ -76,7 +76,7 @@ VALUES
         'a1000000-0000-0000-0000-000000000003',
         'carol@example.com',
         '+14155550103',
-        '$2a$10$rQEY1it7gB7EMQXF/2tiXuGDg.IFiGdaPqXCni8KbvKn3kuJkqHQC',
+        '$2a$10$rqBlxPefIAAnIBnS51DwqeZxrz8PxLR/FvZlSMUesT/YZqfVp0pmi',
         'Carol',
         'Davis',
         'passenger',
@@ -98,7 +98,7 @@ VALUES
         'd2000000-0000-0000-0000-000000000001',
         'dave@example.com',
         '+14155550201',
-        '$2a$10$rQEY1it7gB7EMQXF/2tiXuGDg.IFiGdaPqXCni8KbvKn3kuJkqHQC',
+        '$2a$10$rqBlxPefIAAnIBnS51DwqeZxrz8PxLR/FvZlSMUesT/YZqfVp0pmi',
         'Dave',
         'Martinez',
         'driver',
@@ -113,7 +113,7 @@ VALUES
         'd2000000-0000-0000-0000-000000000002',
         'eve@example.com',
         '+14155550202',
-        '$2a$10$rQEY1it7gB7EMQXF/2tiXuGDg.IFiGdaPqXCni8KbvKn3kuJkqHQC',
+        '$2a$10$rqBlxPefIAAnIBnS51DwqeZxrz8PxLR/FvZlSMUesT/YZqfVp0pmi',
         'Eve',
         'Thompson',
         'driver',
@@ -128,7 +128,7 @@ VALUES
         'd2000000-0000-0000-0000-000000000003',
         'frank@example.com',
         '+14155550203',
-        '$2a$10$rQEY1it7gB7EMQXF/2tiXuGDg.IFiGdaPqXCni8KbvKn3kuJkqHQC',
+        '$2a$10$rqBlxPefIAAnIBnS51DwqeZxrz8PxLR/FvZlSMUesT/YZqfVp0pmi',
         'Frank',
         'Garcia',
         'driver',

@@ -87,6 +87,16 @@ router.post('/', authenticate, validate(ratingSchema), async (req, res) => {
       [score, ratedId],
     );
 
+    // Keep the denormalized driver_profiles.rating in sync with users.rating_avg
+    // (no-op for passengers, who have no driver profile).
+    await query(
+      `UPDATE driver_profiles dp
+       SET rating = u.rating_avg
+       FROM users u
+       WHERE u.id = dp.user_id AND dp.user_id = $1`,
+      [ratedId],
+    );
+
     return res.status(201).json({
       rating: {
         id: rating.id,

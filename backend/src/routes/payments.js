@@ -309,7 +309,8 @@ router.post(
 
       // Get ride details and verify the passenger is the current user
       const rideResult = await query(
-        `SELECT id, passenger_id, driver_id, fare_amount, platform_fee,
+        `SELECT id, passenger_id, driver_id,
+                COALESCE(actual_fare, estimated_fare) AS fare_amount, platform_fee,
                 driver_payout, status
          FROM rides
          WHERE id = $1`,

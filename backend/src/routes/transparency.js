@@ -90,7 +90,7 @@ router.get('/summary', optionalAuth, async (req, res) => {
 
     // Average fare (from completed rides)
     const avgFareResult = await query(
-      `SELECT COALESCE(AVG(fare_amount), 0) AS avg_fare
+      `SELECT COALESCE(AVG(COALESCE(actual_fare, estimated_fare)), 0) AS avg_fare
        FROM rides
        WHERE status = 'completed'`,
     );
