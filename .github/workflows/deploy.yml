@@ -95,7 +95,7 @@ jobs:
 
       - name: Run database migrations
         working-directory: backend
-        run: psql "$DATABASE_URL" -f migrations/001_initial_schema.sql
+        run: npm run migrate
         env:
           DATABASE_URL: postgresql://openride:openride@localhost:5432/openride_test
 

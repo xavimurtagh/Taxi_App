@@ -52,22 +52,44 @@ const env = {
   SURGE_CAP: parseFloat(process.env.SURGE_CAP) || 1.5,
 };
 
-// Warn about insecure defaults in production
+// In production, refuse to boot with insecure default secrets, and warn about
+// missing integrations that degrade functionality but aren't security-critical.
 if (env.NODE_ENV === 'production') {
+  const fatal = [];
   const warnings = [];
+
+  // Security-critical: default JWT secrets allow anyone to forge auth tokens.
   if (env.JWT_SECRET === 'change-me-in-production') {
-    warnings.push('JWT_SECRET is using the default value');
+    fatal.push('JWT_SECRET is using the insecure default value');
   }
   if (env.JWT_REFRESH_SECRET === 'change-me-refresh-in-production') {
-    warnings.push('JWT_REFRESH_SECRET is using the default value');
+    fatal.push('JWT_REFRESH_SECRET is using the insecure default value');
   }
+
+  // Non-fatal: integrations that disable features when unconfigured.
   if (!env.STRIPE_SECRET_KEY) {
-    warnings.push('STRIPE_SECRET_KEY is not set');
+    warnings.push('STRIPE_SECRET_KEY is not set — payments will fail');
   }
+  if (!env.STRIPE_WEBHOOK_SECRET) {
+    warnings.push('STRIPE_WEBHOOK_SECRET is not set — payment webhooks cannot be verified');
+  }
+  if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN) {
+    warnings.push('Twilio is not configured — phone verification codes will not be delivered via SMS');
+  }
+
   if (warnings.length > 0) {
     console.warn(
       '[env] PRODUCTION WARNINGS:\n' + warnings.map((w) => `  - ${w}`).join('\n')
     );
+  }
+
+  if (fatal.length > 0) {
+    console.error(
+      '[env] FATAL PRODUCTION MISCONFIGURATION:\n' +
+        fatal.map((w) => `  - ${w}`).join('\n') +
+        '\nRefusing to start. Set secure values for these variables and restart.'
+    );
+    process.exit(1);
   }
 }
 

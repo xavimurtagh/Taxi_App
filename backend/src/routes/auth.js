@@ -3,10 +3,18 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import env from '../config/env.js';
 import { query } from '../config/database.js';
+import redis from '../config/redis.js';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validation.js';
 import { registerSchema, loginSchema } from '../utils/validators.js';
 import { authLimiter } from '../middleware/rateLimit.js';
+import { sendVerificationCode } from '../services/sms.js';
+
+// Phone verification code storage (Redis) settings
+const PHONE_CODE_TTL_SECONDS = 600; // 10 minutes
+const PHONE_CODE_MAX_ATTEMPTS = 5;
+const phoneCodeKey = (userId) => `phone_verify:${userId}`;
+const phoneAttemptsKey = (userId) => `phone_verify_attempts:${userId}`;
 
 const router = Router();
 
@@ -318,7 +326,7 @@ router.post('/logout', authenticate, async (req, res) => {
 // ---------------------------------------------------------------------------
 // POST /verify-phone
 // ---------------------------------------------------------------------------
-router.post('/verify-phone', authenticate, async (req, res) => {
+router.post('/verify-phone', authenticate, authLimiter, async (req, res) => {
   try {
     const { code } = req.body;
 
@@ -329,11 +337,40 @@ router.post('/verify-phone', authenticate, async (req, res) => {
       });
     }
 
-    // Placeholder: accept any 6-digit code for now
-    await query(
-      `UPDATE users SET is_verified = true WHERE id = $1`,
-      [req.user.id],
-    );
+    const userId = req.user.id;
+
+    // Throttle the number of guesses against a single issued code.
+    const attempts = await redis.incr(phoneAttemptsKey(userId));
+    if (attempts === 1) {
+      await redis.expire(phoneAttemptsKey(userId), PHONE_CODE_TTL_SECONDS);
+    }
+    if (attempts > PHONE_CODE_MAX_ATTEMPTS) {
+      await redis.del(phoneCodeKey(userId));
+      return res.status(429).json({
+        error: 'Too many attempts',
+        message: 'Too many incorrect attempts. Please request a new code.',
+      });
+    }
+
+    const storedCode = await redis.get(phoneCodeKey(userId));
+    if (!storedCode) {
+      return res.status(400).json({
+        error: 'Bad request',
+        message: 'Verification code has expired or was never requested. Please request a new code.',
+      });
+    }
+
+    if (storedCode !== code) {
+      return res.status(400).json({
+        error: 'Bad request',
+        message: 'Incorrect verification code.',
+      });
+    }
+
+    // Code is valid — mark the user verified and clear the one-time code.
+    await query(`UPDATE users SET is_verified = true WHERE id = $1`, [userId]);
+    await redis.del(phoneCodeKey(userId));
+    await redis.del(phoneAttemptsKey(userId));
 
     return res.status(200).json({ message: 'Phone verified' });
   } catch (err) {
@@ -348,16 +385,42 @@ router.post('/verify-phone', authenticate, async (req, res) => {
 // ---------------------------------------------------------------------------
 // POST /send-verification
 // ---------------------------------------------------------------------------
-router.post('/send-verification', authenticate, async (req, res) => {
+router.post('/send-verification', authenticate, authLimiter, async (req, res) => {
   try {
-    // TODO: Integrate Twilio SMS in production
-    // In production, generate a random 6-digit code, store it in Redis with
-    // a TTL, and send it via Twilio to the user's phone number.
+    const userId = req.user.id;
 
-    return res.status(200).json({
-      message: 'Verification code sent',
-      code: '123456', // Dev placeholder — remove in production
-    });
+    // Look up the user's phone number.
+    const userResult = await query(
+      `SELECT phone, is_verified FROM users WHERE id = $1`,
+      [userId],
+    );
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: 'User not found',
+      });
+    }
+
+    const { phone, is_verified } = userResult.rows[0];
+    if (is_verified) {
+      return res.status(200).json({ message: 'Phone already verified' });
+    }
+
+    // Generate + send a real 6-digit code (sms.js sends via Twilio when
+    // configured, otherwise logs it in development), and store it in Redis
+    // with a TTL so /verify-phone can validate it.
+    const code = await sendVerificationCode(phone);
+    await redis.set(phoneCodeKey(userId), code, 'EX', PHONE_CODE_TTL_SECONDS);
+    await redis.del(phoneAttemptsKey(userId));
+
+    const response = { message: 'Verification code sent' };
+    // Outside production, return the code so local/dev testing doesn't require
+    // a configured SMS provider. Never exposed in production.
+    if (env.NODE_ENV !== 'production') {
+      response.devCode = code;
+    }
+
+    return res.status(200).json(response);
   } catch (err) {
     console.error('[auth] Send verification error:', err);
     return res.status(500).json({

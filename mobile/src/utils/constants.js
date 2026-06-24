@@ -1,6 +1,13 @@
-export const API_URL = 'http://localhost:3000/api/v1';
+// API endpoints are configurable via Expo public env vars so production builds
+// point at the deployed API instead of localhost. Set EXPO_PUBLIC_API_URL and
+// EXPO_PUBLIC_SOCKET_URL in eas.json / app config for staging and production.
+// The localhost defaults are for local development only (use your machine's LAN
+// IP, e.g. http://192.168.x.x:3000, when testing on a physical device).
+export const SOCKET_URL =
+  process.env.EXPO_PUBLIC_SOCKET_URL || 'http://localhost:3000';
 
-export const SOCKET_URL = 'http://localhost:3000';
+export const API_URL =
+  process.env.EXPO_PUBLIC_API_URL || `${SOCKET_URL}/api/v1`;
 
 export const VEHICLE_TYPES = [
   {
